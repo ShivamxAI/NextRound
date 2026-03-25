@@ -1,0 +1,12 @@
+firebase-functions~=0.5.0
+fastapi
+uvicorn
+firebase-admin
+pydantic
+python-dotenv
+python-multipart
+email-validator
+PyPDF2
+google-genai
+a2wsgi
+werkzeug
