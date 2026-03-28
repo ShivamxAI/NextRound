@@ -10,6 +10,8 @@ import {
   Shield,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { Link, useNavigate } from "react-router-dom"; // <-- Added Link & useNavigate
+import { useToast } from "@/hooks/use-toast"; // <-- Added for notifications
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +24,10 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 
+// --- FIREBASE IMPORTS ---
+import { auth } from "../lib/firebase"; 
+import { signOut } from "firebase/auth";
+
 const adminItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Users", url: "/admin/users", icon: Users },
@@ -33,12 +39,37 @@ const adminItems = [
 ];
 
 export function AdminSidebar() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // --- LOGOUT LOGIC ---
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth); 
+      toast({ title: "Signed out successfully" });
+      navigate("/login"); 
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({ 
+        title: "Error signing out", 
+        description: "Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   return (
     <Sidebar className="border-r-0">
       <div className="px-6 py-5">
-        <h1 className="text-xl font-bold font-display text-sidebar-primary-foreground tracking-tight">
-          Next<span className="text-sidebar-primary">Round</span>
-        </h1>
+        
+        {/* --- THE ESCAPE HATCH --- */}
+        <Link to="/dashboard" className="block transition-opacity hover:opacity-80 cursor-pointer">
+          <h1 className="text-xl font-bold font-display text-sidebar-primary-foreground tracking-tight">
+            Next<span className="text-sidebar-primary">Round</span>
+          </h1>
+        </Link>
+        {/* ------------------------ */}
+
         <div className="flex items-center gap-2 mt-1">
           <Shield className="h-3 w-3 text-sidebar-primary" />
           <span className="text-xs text-sidebar-foreground/60 uppercase tracking-wider">Admin Panel</span>
@@ -73,7 +104,11 @@ export function AdminSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        <button className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full text-sm">
+        {/* --- WIRED UP SIGN OUT BUTTON --- */}
+        <button 
+          onClick={handleSignOut}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full text-sm"
+        >
           <LogOut className="h-4 w-4" />
           <span>Sign Out</span>
         </button>

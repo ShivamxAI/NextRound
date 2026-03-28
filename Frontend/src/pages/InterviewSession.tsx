@@ -34,7 +34,7 @@ export default function InterviewSession() {
       }
       try {
         const token = await auth.currentUser?.getIdToken();
-        const response = await fetch(`/api/interview/${interviewId}`, {
+        const response = await fetch(`http://127.0.0.1:8000/api/interview/${interviewId}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         
@@ -129,7 +129,7 @@ export default function InterviewSession() {
       // If they ran out of time or clicked next without typing, we submit a fallback string.
       const finalAnswer = answer.trim() !== "" ? answer.trim() : "(No answer provided / Time expired)";
 
-      const response = await fetch(`/api/interview/${interviewId}/answer`, {
+      const response = await fetch(`http://127.0.0.1:8000/api/interview/${interviewId}/answer`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

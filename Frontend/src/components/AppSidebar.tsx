@@ -1,7 +1,8 @@
-import { LayoutDashboard, Plus, History, User, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { LayoutDashboard, Plus, History, User, LogOut, Shield } from "lucide-react"; 
 import { NavLink } from "@/components/NavLink";
-import { useNavigate } from "react-router-dom"; // <-- Added for redirection
-import { useToast } from "@/hooks/use-toast"; // <-- Added for notifications
+import { useNavigate } from "react-router-dom"; 
+import { useToast } from "@/hooks/use-toast"; 
 import {
   Sidebar,
   SidebarContent,
@@ -14,9 +15,10 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 
-// --- FIREBASE IMPORTS ---
-import { auth } from "../lib/firebase"; // Adjust this path if your firebase file is elsewhere
-import { signOut } from "firebase/auth";
+// --- FIREBASE & API IMPORTS ---
+import { auth } from "../lib/firebase"; 
+import { signOut, onAuthStateChanged } from "firebase/auth"; // <-- Added onAuthStateChanged
+import { fetchWithAuth } from "../lib/api"; 
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -28,13 +30,45 @@ const mainItems = [
 export function AppSidebar() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // 1. State to track if the user is an admin
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // 2. Ask the backend for the user's profile when the sidebar loads
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const profile = await fetchWithAuth("/profile/"); 
+        if (profile.role === "admin") {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      } catch (err) {
+        console.error("Could not verify admin status:", err);
+        setIsAdmin(false);
+      }
+    };
+
+    // --- THE FIX: Listen for Firebase to initialize FIRST ---
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        checkAdminStatus(); // User is confirmed loaded, now check the database!
+      } else {
+        setIsAdmin(false); // Hide if logged out
+      }
+    });
+
+    // Cleanup the listener when the component unmounts
+    return () => unsubscribe();
+  }, []);
 
   // --- LOGOUT LOGIC ---
   const handleSignOut = async () => {
     try {
-      await signOut(auth); // Clears the Firebase session
+      await signOut(auth); 
       toast({ title: "Signed out successfully" });
-      navigate("/login"); // Redirects to login page
+      navigate("/login"); 
     } catch (error) {
       console.error("Error signing out:", error);
       toast({ 
@@ -74,13 +108,30 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* 3. The Secret Admin Door! */}
+              {/* This will ONLY render if isAdmin is true */}
+              {isAdmin && (
+                <SidebarMenuItem className="mt-4 pt-4 border-t border-sidebar-border">
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/admin"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <Shield className="h-4 w-4 text-indigo-500" />
+                      <span className="text-indigo-500 font-medium">Admin Panel</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        {/* --- ATTACHED onClick EVENT HERE --- */}
         <button 
           onClick={handleSignOut}
           className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full text-sm"

@@ -1,14 +1,46 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Users, Briefcase } from "lucide-react";
-
-const metricCards = [
-  { title: "Daily Active Users", value: "—", icon: Users },
-  { title: "Monthly Active Users", value: "—", icon: Users },
-  { title: "Revenue Overview", value: "—", icon: TrendingUp },
-  { title: "Popular Job Roles", value: "—", icon: Briefcase },
-];
+import { BarChart3, TrendingUp, Users, Briefcase, Loader2 } from "lucide-react";
+import { fetchWithAuth } from "@/lib/api";
+import { 
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+} from 'recharts';
 
 export default function AdminAnalytics() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      try {
+        const result = await fetchWithAuth("/admin/analytics");
+        setData(result);
+      } catch (err) {
+        console.error("Failed to load analytics:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadAnalytics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin mb-4 text-primary" />
+        <p>Crunching the numbers...</p>
+      </div>
+    );
+  }
+
+  // Map the live metrics to your cards
+  const metricCards = [
+    { title: "Daily Active Users", value: data?.metrics.daily_active || "0", icon: Users },
+    { title: "Monthly Active Users", value: data?.metrics.monthly_active || "0", icon: Users },
+    { title: "Revenue Overview", value: data?.metrics.revenue || "$0", icon: TrendingUp },
+    { title: "Popular Job Roles", value: data?.metrics.popular_role || "N/A", icon: Briefcase },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -16,7 +48,8 @@ export default function AdminAnalytics() {
         <p className="text-muted-foreground mt-1">Platform metrics and business intelligence</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Top Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {metricCards.map((m) => (
           <Card key={m.title}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -25,24 +58,27 @@ export default function AdminAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold font-display text-foreground">{m.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">No data available</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Charts placeholder */}
+      {/* Line Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="font-display text-lg">User Growth</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <BarChart3 className="h-12 w-12 text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground">User growth chart will appear here</p>
-              <p className="text-sm text-muted-foreground/60 mt-1">Connect analytics backend to visualize data</p>
-            </div>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data?.user_growth}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dx={-10} />
+                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <Line type="monotone" dataKey="users" stroke="#2563eb" strokeWidth={3} dot={{r: 4, fill: '#2563eb'}} activeDot={{r: 6}} />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
@@ -50,26 +86,35 @@ export default function AdminAnalytics() {
           <CardHeader>
             <CardTitle className="font-display text-lg">Revenue Trend</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <TrendingUp className="h-12 w-12 text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground">Revenue chart will appear here</p>
-              <p className="text-sm text-muted-foreground/60 mt-1">Connect payment backend to visualize data</p>
-            </div>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data?.revenue_trend}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dx={-10} />
+                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981'}} activeDot={{r: 6}} />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
+      {/* Bar Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="font-display text-lg">Average Performance Score</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <BarChart3 className="h-12 w-12 text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">Performance distribution chart will appear here</p>
-            <p className="text-sm text-muted-foreground/60 mt-1">Data will populate as interviews are conducted</p>
-          </div>
+        <CardContent className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data?.performance_distribution}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+              <XAxis dataKey="score" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dx={-10} />
+              <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} cursor={{fill: '#f3f4f6'}} />
+              <Bar dataKey="candidates" fill="#6366f1" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
     </div>

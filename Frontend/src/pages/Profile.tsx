@@ -31,7 +31,7 @@ export default function Profile() {
       if (user) {
         try {
           const token = await user.getIdToken();
-          const response = await fetch("/api/profile/", {
+          const response = await fetch("http://127.0.0.1:8000/api/profile/", {
             headers: { "Authorization": `Bearer ${token}` }
           });
           
@@ -60,7 +60,7 @@ export default function Profile() {
     setIsSaving(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const response = await fetch("/api/profile/", {
+      const response = await fetch("http://127.0.0.1:8000/api/profile/", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -91,7 +91,7 @@ export default function Profile() {
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      const response = await fetch("/api/profile/resume", {
+      const response = await fetch("http://127.0.0.1:8000/api/profile/resume", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`

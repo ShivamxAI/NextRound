@@ -4,24 +4,38 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { History, Plus, Calendar, Clock, Target, ChevronRight, Loader2 } from "lucide-react";
 import { auth } from "../lib/firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { fetchWithAuth } from "../lib/api"; // <-- Import the secure API helper
 
 export default function InterviewHistory() {
+  // 1. Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // 2. Data State
   const [history, setHistory] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  // --- EFFECT 1: Wait for Firebase ---
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // --- EFFECT 2: Fetch history ONLY after user is loaded ---
+  useEffect(() => {
+    // If no user yet (or they are logged out), do not fetch!
+    if (!user) return;
+
     const fetchHistory = async () => {
       try {
-        const token = await auth.currentUser?.getIdToken();
-        const response = await fetch("/api/interview/user/history", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setHistory(data.history || []);
-        }
+        // Use the helper! It automatically handles the token and base URL.
+        const data = await fetchWithAuth("/interview/user/history");
+        setHistory(data.history || []);
       } catch (error) {
         console.error("Failed to fetch history:", error);
       } finally {
@@ -30,9 +44,10 @@ export default function InterviewHistory() {
     };
 
     fetchHistory();
-  }, []);
+  }, [user]); // Runs exactly when the user state updates
 
-  if (isLoading) {
+  // --- SHOW LOADER IF FIREBASE OR DATA IS LOADING ---
+  if (authLoading || (user && isLoading)) {
     return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
@@ -80,6 +95,8 @@ export default function InterviewHistory() {
               )}
             >
               <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* ... Keep the rest of your beautiful Card Content EXACTLY as it was! */}
+                
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-foreground capitalize text-lg">
@@ -104,7 +121,7 @@ export default function InterviewHistory() {
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
-                      {interview.duration_minutes} mins
+                      {interview.duration_minutes || "30"} mins
                     </span>
                     <span className="flex items-center gap-1">
                       <Target className="h-4 w-4" />

@@ -4,24 +4,38 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Target, Clock, Activity, ArrowRight, Loader2 } from "lucide-react";
 import { auth } from "../lib/firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { fetchWithAuth } from "../lib/api"; // Bring in our secure API helper!
 
 export default function Dashboard() {
+  // 1. Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // 2. Data State
   const [history, setHistory] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  // --- EFFECT 1: Wait for Firebase to find the user ---
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // --- EFFECT 2: Fetch history ONLY after user is loaded ---
+  useEffect(() => {
+    // If no user yet (or they are logged out), do not fetch!
+    if (!user) return;
+
     const fetchHistory = async () => {
       try {
-        const token = await auth.currentUser?.getIdToken();
-        const response = await fetch("/api/interview/user/history", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setHistory(data.history || []);
-        }
+        // Use our helper! It automatically handles the token and the base URL
+        const data = await fetchWithAuth("/interview/user/history");
+        setHistory(data.history || []);
       } catch (error) {
         console.error("Failed to fetch history:", error);
       } finally {
@@ -30,7 +44,7 @@ export default function Dashboard() {
     };
 
     fetchHistory();
-  }, []);
+  }, [user]); // <--- This ensures it runs the moment the user state updates
 
   // --- CALCULATE STATS ---
   const completedInterviews = history.filter(i => i.status === "completed" && i.feedback);
@@ -44,7 +58,8 @@ export default function Dashboard() {
     ? new Date(completedInterviews[0].created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
     : "—";
 
-  if (isLoading) {
+  // --- SHOW LOADER IF FIREBASE OR DATA IS LOADING ---
+  if (authLoading || (user && isLoading)) {
     return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
@@ -52,7 +67,10 @@ export default function Dashboard() {
     <div className="space-y-8 max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-display text-foreground">Welcome back!</h1>
+          {/* We can now safely greet them by their Google name! */}
+          <h1 className="text-2xl font-bold font-display text-foreground">
+            Welcome back{user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}!
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">Ready for your next practice round?</p>
         </div>
         <Button onClick={() => navigate("/interview/setup")}>

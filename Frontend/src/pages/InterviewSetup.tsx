@@ -51,7 +51,7 @@ export default function InterviewSetup() {
       // For now, if they uploaded a file, we warn them (We can add a PDF text-extractor later if needed)
       const finalJD = jobDescription.trim() || "Please refer to uploaded JD.";
 
-      const response = await fetch("/api/interview/generate", {
+      const response = await fetch("http://127.0.0.1:8000/api/interview/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,11 +18,57 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Users, Filter } from "lucide-react";
+import { Search, Users, Filter, Loader2, MoreHorizontal } from "lucide-react";
+import { fetchWithAuth } from "@/lib/api";
+
+// 1. Define the shape of our User data from the backend
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  status: string;
+  created_at: string;
+}
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // 2. Add state for our backend data
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // 3. Fetch users when the component loads
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const data = await fetchWithAuth("/admin/users");
+        setUsers(data.users || []);
+      } catch (err: any) {
+        console.error("Failed to load users:", err);
+        setError(err.message || "Failed to load user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, []);
+
+  // 4. Real-time Filtering Logic
+  const filteredUsers = users.filter((user) => {
+    // Check search term (name or email)
+    const matchesSearch = 
+      (user.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (user.email?.toLowerCase() || "").includes(search.toLowerCase());
+    
+    // Check status dropdown
+    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -78,17 +124,65 @@ export default function AdminUsers() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell colSpan={7}>
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-muted-foreground font-medium">No users found</p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">
-                      Registered users will appear here once authentication is enabled.
-                    </p>
-                  </div>
-                </TableCell>
-              </TableRow>
+              {/* State 1: Loading */}
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                  </TableCell>
+                </TableRow>
+              ) : error ? (
+                /* State 2: Error */
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center text-red-500 font-medium">
+                    {error}
+                  </TableCell>
+                </TableRow>
+              ) : filteredUsers.length === 0 ? (
+                /* State 3: Empty or No Search Results */
+                <TableRow>
+                  <TableCell colSpan={7}>
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                      <p className="text-muted-foreground font-medium">No users found</p>
+                      <p className="text-sm text-muted-foreground/70 mt-1">
+                        {search || statusFilter !== 'all' 
+                          ? "Try adjusting your search or filters." 
+                          : "Registered users will appear here once authentication is enabled."}
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                /* State 4: Render Data */
+                filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={user.plan === "pro" ? "default" : "secondary"} className="uppercase text-[10px]">
+                        {user.plan || "free"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.status === "active" ? "outline" : "destructive"} className="capitalize">
+                        {user.status || "active"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      0 {/* Placeholder: We can aggregate interview counts later */}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {user.created_at ? new Date(user.created_at).toLocaleDateString() : "Unknown"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

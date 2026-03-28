@@ -30,7 +30,7 @@ export default function Feedback() {
         const token = await auth.currentUser?.getIdToken();
         
         // This triggers the backend to grade the interview
-        const response = await fetch(`/api/interview/${interviewId}/evaluate`, {
+        const response = await fetch(`http://127.0.0.1:8000/api/interview/${interviewId}/evaluate`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`
