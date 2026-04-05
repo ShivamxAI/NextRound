@@ -7,3 +7,4 @@ python-multipart # For file uploads
 email-validator
 PyPDF2
 google-genai
+razorpay

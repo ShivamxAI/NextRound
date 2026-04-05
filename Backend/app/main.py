@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.firebase import db 
 from app.api.routes import profile # Import the new routes
-from app.api.routes import profile, interview, admin
+from app.api.routes import profile, interview, admin, payments
 
 app = FastAPI(title="NextRound API")
 
@@ -21,6 +21,8 @@ app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 app.include_router(interview.router, prefix="/api/interview", tags=["Interview"])
 
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+
+app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
 
 @app.get("/")
 def health_check():

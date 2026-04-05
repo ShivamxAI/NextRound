@@ -1,12 +1,32 @@
 import os
 import json
+import datetime
 from google import genai
 from dotenv import load_dotenv
+from app.core.firebase import db
 
 load_dotenv()
 
 # NEW CLIENT INITIALIZATION
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+# --- LOGGING HELPER MOVED TO THE TOP ---
+def log_ai_interaction(action: str, prompt: str, raw_response: str, latency_ms: float, error: str = None):
+    """Silently saves exactly what Gemini was asked and what it answered."""
+    try:
+        log_data = {
+            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "action": action,
+            "prompt": prompt,
+            "response": raw_response,
+            "latency_ms": round(latency_ms, 2),
+            "status": "error" if error else "success",
+            "error_msg": error
+        }
+        db.collection("ai_logs").document().set(log_data)
+    except Exception as e:
+        print(f"🚨 Failed to save AI log: {e}")
+
 
 def extract_skills_from_resume(resume_text: str) -> list:
     """
@@ -23,12 +43,18 @@ def extract_skills_from_resume(resume_text: str) -> list:
     """
     
     try:
+        start_time = datetime.datetime.utcnow()
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
         )
+        end_time = datetime.datetime.utcnow()
+        latency = (end_time - start_time).total_seconds() * 1000
         
         text = response.text.strip()
+        
+        # Log it!
+        log_ai_interaction(action="extract_skills", prompt=prompt, raw_response=text, latency_ms=latency)
         
         # Clean up Gemini's habit of wrapping things in markdown
         if text.startswith("```json"):
@@ -54,13 +80,13 @@ def extract_skills_from_resume(resume_text: str) -> list:
             
     except Exception as e:
         print(f"🚨 NEW SDK ERROR: {e}")
-        # Print exactly what Gemini said so we can see why it broke
+        log_ai_interaction(action="extract_skills", prompt=prompt, raw_response="", latency_ms=0, error=str(e))
         if 'response' in locals() and hasattr(response, 'text'):
             print(f"RAW AI RESPONSE: {response.text}") 
         return []
 
 
-def generate_interview_questions(job_description: str, skills: list, interview_type: str, count: int) -> list:
+def generate_interview_questions(job_description: str, skills: list, interview_type: str, count: int, industry: str = "general") -> list:
     """
     Generates personalized interview questions based on the JD and candidate skills.
     """
@@ -79,6 +105,7 @@ def generate_interview_questions(job_description: str, skills: list, interview_t
     - If "Behavioral", focus on leadership, conflict resolution, and teamwork.
     - If "Mixed", provide a 50/50 split.
     - Return ONLY a raw JSON array of objects. Do not include markdown or the word 'json'.
+    - Industry Focus: Tailor the questions to the {industry} industry. If 'general', keep it standard.
     
     REQUIRED FORMAT:
     [
@@ -88,12 +115,18 @@ def generate_interview_questions(job_description: str, skills: list, interview_t
     """
     
     try:
+        start_time = datetime.datetime.utcnow()
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
         )
+        end_time = datetime.datetime.utcnow()
+        latency = (end_time - start_time).total_seconds() * 1000
         
         text = response.text.strip()
+        
+        # Log it!
+        log_ai_interaction(action="generate_questions", prompt=prompt, raw_response=text, latency_ms=latency)
         
         # Clean up Gemini's habit of wrapping things in markdown
         if text.startswith("```json"):
@@ -107,12 +140,13 @@ def generate_interview_questions(job_description: str, skills: list, interview_t
         
     except Exception as e:
         print(f"🚨 QUESTION GENERATION ERROR: {e}")
+        log_ai_interaction(action="generate_questions", prompt=prompt, raw_response="", latency_ms=0, error=str(e))
         return []
 
 
-def evaluate_interview(qa_list: list) -> dict:
+def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
     """
-    Takes the questions and user answers, and asks Gemini to grade the performance.
+    Takes the questions and user answers, and asks Gemini to grade the performance based on subscription plan.
     """
     # Format the Q&A for the prompt
     transcript = ""
@@ -121,17 +155,40 @@ def evaluate_interview(qa_list: list) -> dict:
         transcript += f"Question: {qa.get('text')}\n"
         transcript += f"Candidate's Answer: {qa.get('user_answer', '(No answer provided)')}\n"
 
+    # Define the strictness and depth based on the plan!
+    if user_plan == "free":
+        grading_rules = """
+        - Provide BASIC feedback.
+        - Give a final score out of 100.
+        - The 'strengths' array should contain exactly 1 generic positive note.
+        - The 'improvements' array MUST contain exactly this string as its first item: "🔒 Upgrade to Pro or Premium to unlock detailed question-by-question technical corrections and actionable improvement roadmaps."
+        - Do not provide specific technical corrections.
+        """
+    elif user_plan == "pro":
+        grading_rules = """
+        - Provide DETAILED feedback.
+        - Give a final score out of 100 and precise metrics.
+        - The 'strengths' array should contain 2-3 specific things they did well technically or behaviorally.
+        - The 'improvements' array should contain 2-3 specific technical mistakes they made and explicitly state what the correct answer should be.
+        """
+    else: # Premium
+        grading_rules = """
+        - Provide ADVANCED EXPERT feedback.
+        - Give a rigorous final score and strict metrics.
+        - The 'strengths' array should contain 3-4 deep analytical points about their communication style, confidence, and technical depth.
+        - The 'improvements' array MUST include a specific step-by-step 'Improvement Roadmap', specific coding concepts/patterns to study, and precise behavioral corrections.
+        """
+
     prompt = f"""
     You are an expert technical hiring manager grading a candidate's interview.
-    Review the following interview transcript and provide a brutal but fair evaluation.
+    Review the following interview transcript and provide a fair evaluation.
     
     TRANSCRIPT:
     {transcript}
     
     INSTRUCTIONS:
     - Grade the candidate on a scale of 0 to 100 for each metric.
-    - Extract 2-3 specific strengths.
-    - Extract 2-3 specific areas for improvement.
+    {grading_rules}
     - Return ONLY a raw JSON object. Do not include markdown or the word 'json'.
     
     REQUIRED FORMAT:
@@ -143,18 +200,26 @@ def evaluate_interview(qa_list: list) -> dict:
             "confidence": 85,
             "fluency": 88
         }},
-        "strengths": ["Clear explanation of React hooks", "Good structural thinking"],
-        "improvements": ["Did not mention edge cases in database scaling", "Used filler words frequently"]
+        "strengths": ["...", "..."],
+        "improvements": ["...", "..."],
+        "roadmap": ["Step 1...", "Step 2...", "Step 3..."]
     }}
     """
     
     try:
+        start_time = datetime.datetime.utcnow()
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
         )
+        end_time = datetime.datetime.utcnow()
+        latency = (end_time - start_time).total_seconds() * 1000
         
         text = response.text.strip()
+        
+        # Log it!
+        log_ai_interaction(action="evaluate_interview", prompt=prompt, raw_response=text, latency_ms=latency)
+        
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -166,7 +231,7 @@ def evaluate_interview(qa_list: list) -> dict:
         
     except Exception as e:
         print(f"🚨 EVALUATION ERROR: {e}")
-        # Return a safe fallback so the app doesn't crash
+        log_ai_interaction(action="evaluate_interview", prompt=prompt, raw_response="", latency_ms=0, error=str(e))
         return {
             "overall_score": 0,
             "metrics": {"technical_accuracy": 0, "communication": 0, "confidence": 0, "fluency": 0},
