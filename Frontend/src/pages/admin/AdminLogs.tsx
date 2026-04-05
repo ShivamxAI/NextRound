@@ -76,6 +76,35 @@ export default function AdminLogs() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (filteredLogs.length === 0) return;
+
+    // 1. Create the CSV headers
+    const headers = ["Timestamp", "Type", "User", "Action", "Details"];
+
+    // 2. Map over the logs and format them as CSV rows
+    const csvRows = filteredLogs.map(log => {
+      // We wrap the text in quotes just in case your details contain commas!
+      return `"${log.timestamp}","${log.type}","${log.user}","${log.action}","${log.details.replace(/"/g, '""')}"`;
+    });
+
+    // 3. Combine headers and rows with line breaks
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+
+    // 4. Create a temporary "Blob" (file) in the browser
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
+    // 5. Create a fake link, click it to download, and remove it
+    const link = document.createElement("a");
+    link.href = url;
+    // Names the file something like: nextround_logs_2026-03-28.csv
+    link.download = `nextround_logs_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -83,7 +112,8 @@ export default function AdminLogs() {
           <h1 className="text-2xl font-bold font-display text-foreground">Reporting & Logs</h1>
           <p className="text-muted-foreground mt-1">System logs, user activity, and API usage</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={handleExportCSV}
+        disabled={filteredLogs.length === 0 || loading}>
           <Download className="h-4 w-4 mr-2" />
           Export CSV
         </Button>

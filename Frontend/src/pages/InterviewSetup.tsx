@@ -1,16 +1,16 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ArrowRight, Upload, Brain, MessageSquare, Shuffle, Clock, Hash, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, Brain, MessageSquare, Shuffle, Clock, Hash, CheckCircle2, Loader2, Briefcase, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// --- FIREBASE IMPORT ---
-import { auth } from "../lib/firebase";
+// --- IMPORT SECURE API HELPER ---
+import { fetchWithAuth } from "../lib/api";
 
 const interviewTypes = [
   { id: "technical", label: "Technical", icon: Brain, description: "DSA, system design, and coding questions" },
@@ -26,8 +26,11 @@ export default function InterviewSetup() {
   const [duration, setDuration] = useState("30");
   const [questions, setQuestions] = useState("10");
   
-  // --- NEW LOADING STATE ---
+  // --- NEW: Industry Focus State ---
+  const [industry, setIndustry] = useState("general");
+  
   const [isGenerating, setIsGenerating] = useState(false);
+  const [userPlan, setUserPlan] = useState("free"); 
   
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -36,55 +39,70 @@ export default function InterviewSetup() {
   const totalSteps = 4;
   const progress = (step / totalSteps) * 100;
 
+  // Dynamic Limits based on Plan
+  const maxDuration = userPlan === "free" ? 30 : 90;
+  const maxQuestions = userPlan === "free" ? 10 : 25;
+
+  // Fetch plan on load
+  useEffect(() => {
+    const fetchPlan = async () => {
+      try {
+        const profile = await fetchWithAuth("/profile/");
+        setUserPlan(profile.plan?.toLowerCase() || "free");
+      } catch (error) {
+        console.error("Failed to load profile for limits", error);
+      }
+    };
+    fetchPlan();
+  }, []);
+
   const canNext = () => {
     if (step === 1) return jobDescription.trim().length > 0 || jdFile !== null;
     if (step === 2) return type !== "";
+    if (step === 3) {
+      const d = parseInt(duration) || 0;
+      const q = parseInt(questions) || 0;
+      return d >= 5 && d <= maxDuration && q >= 1 && q <= maxQuestions;
+    }
     return true;
   };
 
-  // --- NEW BACKEND GENERATION LOGIC ---
   const handleStartInterview = async () => {
     setIsGenerating(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      
-      // For now, if they uploaded a file, we warn them (We can add a PDF text-extractor later if needed)
       const finalJD = jobDescription.trim() || "Please refer to uploaded JD.";
 
-      const response = await fetch("http://127.0.0.1:8000/api/interview/generate", {
+      const data = await fetchWithAuth("/interview/generate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
         body: JSON.stringify({
           job_description: finalJD,
           interview_type: type,
           duration_minutes: parseInt(duration),
-          question_count: parseInt(questions)
+          question_count: parseInt(questions),
+          industry: industry // <-- NEW: Send industry to the backend!
         })
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate interview questions");
-      }
-
-      const data = await response.json();
-      
       toast({ title: "Interview Ready!", description: "AI has customized your questions." });
-      
-      // Navigate to the session page and pass the new Interview ID in the URL
       navigate(`/interview/session?id=${data.interview_id}`);
       
     } catch (error: any) {
       console.error(error);
-      toast({ title: "Generation Failed", description: error.message, variant: "destructive" });
+      if (error.message && error.message.includes("FREE_LIMIT_REACHED")) {
+        toast({ 
+          title: "Limit Reached", 
+          description: "You've used your 3 free interviews this month. Upgrade to Pro for unlimited access!", 
+          variant: "destructive"
+        });
+        navigate("/pricing"); 
+      } else {
+        toast({ title: "Generation Failed", description: error.message, variant: "destructive" });
+      }
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Helper function to render Interview Type buttons cleanly
   const renderInterviewTypeButtons = () => {
     return interviewTypes.map((t) => {
       const isSelected = type === t.id;
@@ -119,7 +137,6 @@ export default function InterviewSetup() {
 
       <Progress value={progress} className="h-2" />
 
-      {/* Step 1: Job Description */}
       {step === 1 && (
         <Card>
           <CardHeader>
@@ -150,7 +167,6 @@ export default function InterviewSetup() {
         </Card>
       )}
 
-      {/* Step 2: Interview Type */}
       {step === 2 && (
         <Card>
           <CardHeader>
@@ -163,31 +179,109 @@ export default function InterviewSetup() {
         </Card>
       )}
 
-      {/* Step 3: Duration & Questions */}
       {step === 3 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-display">Settings</CardTitle>
-            <CardDescription>Configure duration and number of questions</CardDescription>
+            <CardDescription>Configure duration, questions, and industry focus</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            
+            {/* --- NEW: INDUSTRY FOCUS DROPDOWN --- */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-muted-foreground" /> Industry Focus
+              </Label>
+              <div className="relative">
+                <select
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  disabled={userPlan !== "premium"}
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
+                >
+                  <option value="general">General (Standard Questions)</option>
+                  <option value="faang">Big Tech / FAANG</option>
+                  <option value="fintech">FinTech & Trading</option>
+                  <option value="healthtech">HealthTech & HIPAA</option>
+                  <option value="ecommerce">E-Commerce & Retail</option>
+                  <option value="startup">Early-stage Startup</option>
+                </select>
+                {/* Lock Icon overlay for non-premium users */}
+                {userPlan !== "premium" && (
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                    <Lock className="h-4 w-4 text-amber-500" />
+                  </div>
+                )}
+              </div>
+              {userPlan !== "premium" && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Industry-specific targeting is a Premium feature. <Link to="/pricing" className="text-primary hover:underline">Upgrade here.</Link>
+                </div>
+              )}
+            </div>
+            {/* ------------------------------------ */}
+
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" /> Duration (minutes)
               </Label>
-              <Input type="number" min="5" max="120" value={duration} onChange={(e) => setDuration(e.target.value)} />
+              <Input 
+                type="number" 
+                min="5" 
+                max={maxDuration} 
+                value={duration} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") setDuration("");
+                  else if (parseInt(val) > maxDuration) setDuration(maxDuration.toString());
+                  else setDuration(val);
+                }} 
+              />
+              <div className="text-xs text-muted-foreground flex justify-between">
+                <span>Minimum: 5 mins</span>
+                <span>
+                  Maximum: {maxDuration} mins 
+                  {userPlan === "free" && (
+                    <Link to="/pricing" className="text-primary hover:underline ml-1">
+                      (Upgrade for 90 mins)
+                    </Link>
+                  )}
+                </span>
+              </div>
             </div>
+
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Hash className="h-4 w-4 text-muted-foreground" /> Number of Questions
               </Label>
-              <Input type="number" min="1" max="50" value={questions} onChange={(e) => setQuestions(e.target.value)} />
+              <Input 
+                type="number" 
+                min="1" 
+                max={maxQuestions} 
+                value={questions} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") setQuestions("");
+                  else if (parseInt(val) > maxQuestions) setQuestions(maxQuestions.toString());
+                  else setQuestions(val);
+                }} 
+              />
+              <div className="text-xs text-muted-foreground flex justify-between">
+                <span>Minimum: 1 question</span>
+                <span>
+                  Maximum: {maxQuestions} questions
+                  {userPlan === "free" && (
+                    <Link to="/pricing" className="text-primary hover:underline ml-1">
+                      (Upgrade for 25 limits)
+                    </Link>
+                  )}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 4: Review */}
       {step === 4 && (
         <Card>
           <CardHeader>
@@ -205,6 +299,10 @@ export default function InterviewSetup() {
               <div className="flex justify-between py-2 border-b">
                 <span className="text-muted-foreground">Interview Type</span>
                 <span className="text-foreground font-medium capitalize">{type}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-muted-foreground">Industry</span>
+                <span className="text-foreground font-medium capitalize">{industry === "general" ? "Standard" : industry}</span>
               </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-muted-foreground">Duration</span>

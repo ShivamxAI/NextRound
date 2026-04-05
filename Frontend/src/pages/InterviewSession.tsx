@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom"; // <-- Added Link
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, ArrowRight, XCircle, Clock, MessageSquare, Loader2, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// --- FIREBASE IMPORT ---
+// --- API & FIREBASE IMPORTS ---
 import { auth } from "../lib/firebase";
+import { fetchWithAuth } from "../lib/api"; // <-- Import secure helper
 
 export default function InterviewSession() {
   const navigate = useNavigate();
@@ -21,29 +22,29 @@ export default function InterviewSession() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [timer, setTimer] = useState(180); // 3 min per question
+  
+  // --- NEW: Track user plan ---
+  const [userPlan, setUserPlan] = useState<string>("free");
 
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  // 1. Fetch Questions
+  // 1. Fetch Questions & User Plan
   useEffect(() => {
-    const fetchInterview = async () => {
+    const fetchSessionData = async () => {
       if (!interviewId) {
         navigate("/dashboard");
         return;
       }
       try {
-        const token = await auth.currentUser?.getIdToken();
-        const response = await fetch(`http://127.0.0.1:8000/api/interview/${interviewId}`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setQuestions(data.questions || []);
-        } else {
-          throw new Error("Failed to load interview");
-        }
+        // Fetch the interview questions using our secure helper
+        const interviewData = await fetchWithAuth(`/interview/${interviewId}`);
+        setQuestions(interviewData.questions || []);
+
+        // Fetch the user's profile to check their subscription plan
+        const profileData = await fetchWithAuth("/profile/");
+        setUserPlan(profileData.plan?.toLowerCase() || "free");
+
       } catch (error) {
         console.error(error);
         toast({ title: "Error", description: "Could not load interview session.", variant: "destructive" });
@@ -52,7 +53,7 @@ export default function InterviewSession() {
       }
     };
 
-    fetchInterview();
+    fetchSessionData();
   }, [interviewId, navigate, toast]);
 
   // 2. Timer Countdown Logic
@@ -123,25 +124,17 @@ export default function InterviewSession() {
     }
 
     try {
-      const token = await auth.currentUser?.getIdToken();
       const currentQ = questions[currentIndex];
-
-      // If they ran out of time or clicked next without typing, we submit a fallback string.
       const finalAnswer = answer.trim() !== "" ? answer.trim() : "(No answer provided / Time expired)";
 
-      const response = await fetch(`http://127.0.0.1:8000/api/interview/${interviewId}/answer`, {
+      // Use fetchWithAuth helper for submitting the answer
+      await fetchWithAuth(`/interview/${interviewId}/answer`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
         body: JSON.stringify({
           question_id: currentQ.id,
           answer: finalAnswer
         })
       });
-
-      if (!response.ok) throw new Error("Failed to save answer");
 
       // Check if they clicked End Interview, OR if it's the last question
       if (isEndingEarly || currentIndex === questions.length - 1) {
@@ -215,36 +208,51 @@ export default function InterviewSession() {
         <div className="w-full space-y-4">
           <Textarea
             rows={6}
-            placeholder="Type your answer here or click the microphone to speak..."
+            placeholder={userPlan === "free" ? "Type your answer here..." : "Type your answer here or click the microphone to speak..."}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             className="resize-none text-base p-4"
           />
 
-          <div className="flex items-center justify-center">
-            <button
-              onClick={toggleRecording}
-              className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
-                isRecording
-                  ? "bg-destructive text-destructive-foreground"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
-              }`}
-            >
-              {isRecording && (
-                <span className="absolute inset-0 rounded-full bg-destructive/30 animate-pulse-ring" />
-              )}
-              {isRecording ? <MicOff className="h-6 w-6 relative z-10" /> : <Mic className="h-6 w-6" />}
-            </button>
+          {/* --- CONDITIONAL MIC RENDERING --- */}
+          <div className="flex items-center justify-center mt-4">
+            {userPlan === "free" ? (
+              <div className="text-center bg-muted/50 rounded-lg p-4 border border-dashed border-muted-foreground/30 w-full max-w-sm">
+                <p className="text-sm text-muted-foreground mb-3 flex items-center justify-center gap-2">
+                  <MicOff className="h-4 w-4" />
+                  Voice responses are locked on the Free plan.
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/pricing">Upgrade to Pro</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={toggleRecording}
+                  className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
+                    isRecording
+                      ? "bg-destructive text-destructive-foreground"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  }`}
+                >
+                  {isRecording && (
+                    <span className="absolute inset-0 rounded-full bg-destructive/30 animate-pulse-ring" />
+                  )}
+                  {isRecording ? <MicOff className="h-6 w-6 relative z-10" /> : <Mic className="h-6 w-6" />}
+                </button>
+                <p className="text-center text-xs text-muted-foreground mt-3">
+                  {isRecording ? "Listening... speak now (click to stop)" : "Click to answer with your voice"}
+                </p>
+              </div>
+            )}
           </div>
-          <p className="text-center text-xs text-muted-foreground">
-            {isRecording ? "Listening... speak now (click to stop)" : "Click to answer with your voice"}
-          </p>
+          {/* ---------------------------------- */}
         </div>
       </div>
 
       <footer className="border-t bg-card p-4">
         <div className="max-w-3xl mx-auto flex justify-between">
-          {/* Changed this button to trigger handleNext(true) instead of navigating to Dashboard */}
           <Button variant="outline" onClick={() => handleNext(true)} disabled={isSaving}>
             <XCircle className="mr-2 h-4 w-4" /> End Interview Early
           </Button>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Plus, History, User, LogOut, Shield } from "lucide-react"; 
+import { LayoutDashboard, Plus, History, User, LogOut, Shield, Sparkles } from "lucide-react"; 
 import { NavLink } from "@/components/NavLink";
-import { useNavigate } from "react-router-dom"; 
+import { Link, useNavigate } from "react-router-dom"; // <-- Added Link here
 import { useToast } from "@/hooks/use-toast"; 
 import {
   Sidebar,
@@ -17,7 +17,7 @@ import {
 
 // --- FIREBASE & API IMPORTS ---
 import { auth } from "../lib/firebase"; 
-import { signOut, onAuthStateChanged } from "firebase/auth"; // <-- Added onAuthStateChanged
+import { signOut, onAuthStateChanged } from "firebase/auth"; 
 import { fetchWithAuth } from "../lib/api"; 
 
 const mainItems = [
@@ -31,35 +31,44 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // 1. State to track if the user is an admin
+  // 1. States for Admin and Subscription Plan
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userPlan, setUserPlan] = useState<string>("free");
 
   // 2. Ask the backend for the user's profile when the sidebar loads
   useEffect(() => {
-    const checkAdminStatus = async () => {
+    const checkUserProfile = async () => {
       try {
         const profile = await fetchWithAuth("/profile/"); 
+        
+        // Check Admin Status
         if (profile.role === "admin") {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
         }
+
+        // Set the Subscription Plan
+        if (profile.plan) {
+          setUserPlan(profile.plan.toLowerCase());
+        }
+
       } catch (err) {
-        console.error("Could not verify admin status:", err);
+        console.error("Could not verify user profile:", err);
         setIsAdmin(false);
       }
     };
 
-    // --- THE FIX: Listen for Firebase to initialize FIRST ---
+    // Listen for Firebase to initialize FIRST
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        checkAdminStatus(); // User is confirmed loaded, now check the database!
+        checkUserProfile(); 
       } else {
-        setIsAdmin(false); // Hide if logged out
+        setIsAdmin(false); 
+        setUserPlan("free");
       }
     });
 
-    // Cleanup the listener when the component unmounts
     return () => unsubscribe();
   }, []);
 
@@ -81,10 +90,29 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <div className="px-6 py-5">
+      {/* --- LOGO AND CLICKABLE PRO BADGE AREA --- */}
+      <div className="px-6 py-5 flex items-center gap-2">
         <h1 className="text-xl font-bold font-display text-sidebar-primary-foreground tracking-tight">
           Next<span className="text-sidebar-primary">Round</span>
         </h1>
+        
+        {/* Clickable Pro Badge */}
+        {userPlan === "pro" && (
+          <Link to="/pricing" className="mt-1 outline-none">
+            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full shadow-sm cursor-pointer hover:shadow-md hover:opacity-90 hover:scale-105 transition-all inline-block">
+              Pro
+            </span>
+          </Link>
+        )}
+
+        {/* Clickable Premium Badge */}
+        {userPlan === "premium" && (
+          <Link to="/pricing" className="mt-1 outline-none">
+            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white bg-gradient-to-r from-amber-400 to-orange-500 rounded-full shadow-sm cursor-pointer hover:shadow-md hover:opacity-90 hover:scale-105 transition-all inline-block">
+              Premium
+            </span>
+          </Link>
+        )}
       </div>
 
       <SidebarContent>
@@ -109,8 +137,23 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {/* 3. The Secret Admin Door! */}
-              {/* This will ONLY render if isAdmin is true */}
+              {/* UPGRADE CTA (Only show if they are on the free plan!) */}
+              {userPlan === "free" && (
+                <SidebarMenuItem className="mt-2 mb-2">
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/pricing"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-md text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors font-medium border border-transparent hover:border-amber-200/50"
+                      activeClassName="bg-amber-50 text-amber-700 border-amber-200/50"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      <span>Upgrade</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {/* The Secret Admin Door! */}
               {isAdmin && (
                 <SidebarMenuItem className="mt-4 pt-4 border-t border-sidebar-border">
                   <SidebarMenuButton asChild>

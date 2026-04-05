@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, HelpCircle } from "lucide-react";
+import { CheckCircle2, ArrowRight, HelpCircle, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   Accordion,
@@ -10,11 +11,19 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useToast } from "@/hooks/use-toast";
+
+// --- API & AUTH IMPORTS ---
+import { auth } from "../lib/firebase";
+import { onAuthStateChanged, User } from "firebase/auth"; // <-- Import auth listener
+import { fetchWithAuth } from "../lib/api";
 
 const plans = [
   {
+    id: "free",
     name: "Free",
     price: "₹0",
+    rawPrice: 0,
     period: "forever",
     description: "Get started with basic interview practice",
     badge: null,
@@ -26,11 +35,12 @@ const plans = [
     ],
     cta: "Start Free",
     variant: "outline" as const,
-    href: "/signup",
   },
   {
+    id: "pro",
     name: "Pro",
     price: "₹99",
+    rawPrice: 99,
     period: "/month",
     description: "Unlock the full interview experience",
     badge: "Most Popular",
@@ -44,11 +54,12 @@ const plans = [
     ],
     cta: "Upgrade to Pro",
     variant: "default" as const,
-    href: "/signup",
   },
   {
+    id: "premium",
     name: "Premium",
     price: "₹299",
+    rawPrice: 299,
     period: "/month",
     description: "Advanced coaching for serious candidates",
     badge: null,
@@ -61,7 +72,6 @@ const plans = [
     ],
     cta: "Go Premium",
     variant: "outline" as const,
-    href: "/signup",
   },
 ];
 
@@ -88,7 +98,99 @@ const faqs = [
   },
 ];
 
+// Helper to load Razorpay
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 export default function Pricing() {
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null); // <-- NEW: Track auth state
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // --- NEW: Listen to Firebase Auth to update Navbar ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleAction = async (planId: string, rawPrice: number) => {
+    // 1. If not logged in, force them to sign up first!
+    if (!user) {
+      toast({ title: "Account Required", description: "Please sign in to choose a plan." });
+      navigate("/signup");
+      return;
+    }
+
+    // 2. If free plan, just go to dashboard
+    if (rawPrice === 0) {
+      navigate("/dashboard");
+      return;
+    }
+
+    // 3. Initiate Razorpay Checkout for Paid Plans
+    setLoadingPlan(planId);
+    try {
+      const res = await loadRazorpayScript();
+      if (!res) throw new Error("Razorpay SDK failed to load. Are you online?");
+
+      // Ask Python backend to create an Order
+      const orderData = await fetchWithAuth("/payments/create-order", {
+        method: "POST",
+        body: JSON.stringify({ plan: planId, amount: rawPrice })
+      });
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID, 
+        amount: orderData.amount, 
+        currency: "INR",
+        name: "NextRound",
+        description: `${planId.toUpperCase()} Plan Upgrade`,
+        order_id: orderData.order_id, 
+        handler: async function (response: any) {
+          try {
+            await fetchWithAuth("/payments/verify", {
+              method: "POST",
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                plan: planId
+              })
+            });
+            toast({ title: "Upgrade Successful!", description: `Welcome to the ${planId} plan!` });
+            navigate("/dashboard"); 
+          } catch (err) {
+            toast({ title: "Verification Failed", description: "Payment processing error.", variant: "destructive" });
+          }
+        },
+        prefill: {
+          name: user.displayName || "",
+          email: user.email || "",
+        },
+        theme: { color: "#2563eb" }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Payment Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
@@ -98,12 +200,22 @@ export default function Pricing() {
             Next<span className="text-primary">Round</span>
           </Link>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild>
-              <Link to="/login">Sign In</Link>
-            </Button>
-            <Button asChild>
-              <Link to="/signup">Get Started</Link>
-            </Button>
+            {/* --- UPDATED NAVBAR LOGIC --- */}
+            {!user ? (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/signup">Get Started</Link>
+                </Button>
+              </>
+            ) : (
+              <Button asChild>
+                <Link to="/dashboard">Go to Dashboard</Link>
+              </Button>
+            )}
+            {/* --------------------------- */}
           </div>
         </div>
       </nav>
@@ -162,10 +274,14 @@ export default function Pricing() {
                     </ul>
                   </CardContent>
                   <CardFooter>
-                    <Button variant={plan.variant} className="w-full" asChild>
-                      <Link to={plan.href}>
-                        {plan.cta} <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
+                    <Button 
+                      variant={plan.variant} 
+                      className="w-full" 
+                      onClick={() => handleAction(plan.id, plan.rawPrice)}
+                      disabled={loadingPlan === plan.id}
+                    >
+                      {loadingPlan === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {plan.cta} {loadingPlan !== plan.id && <ArrowRight className="ml-2 h-4 w-4" />}
                     </Button>
                   </CardFooter>
                 </Card>
