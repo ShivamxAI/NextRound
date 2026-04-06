@@ -62,7 +62,7 @@ export default function Login() {
       // We call the backend here just in case this is a brand new user 
       // logging in with Google for the first time. (Our backend code will 
       // safely ignore it if they already exist!)
-      await fetch("http://127.0.0.1:8000/api/profile/init", {
+      await fetch("https://nextround-api-255488063888.asia-south1.run.app/api/profile/init", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

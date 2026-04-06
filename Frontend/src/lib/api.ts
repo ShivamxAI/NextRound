@@ -1,6 +1,6 @@
 import { auth } from "./firebase"; // Notice the import path is just "./firebase" now!
 
-const API_URL = "http://127.0.0.1:8000/api";
+const API_URL = "https://nextround-api-255488063888.asia-south1.run.app/api";
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
 

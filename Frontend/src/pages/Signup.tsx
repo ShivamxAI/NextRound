@@ -43,7 +43,7 @@ export default function Signup() {
       const token = await getIdToken(userCredential.user);
 
       // 2. Save user to Python Backend & Firestore
-      const response = await fetch("http://127.0.0.1:8000/api/profile/init", {
+      const response = await fetch("https://nextround-api-255488063888.asia-south1.run.app/api/profile/init", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -74,7 +74,7 @@ export default function Signup() {
       const token = await getIdToken(result.user);
 
       // Save Google user to Python Backend & Firestore
-      const response = await fetch("http://127.0.0.1:8000/api/profile/init", {
+      const response = await fetch("https://nextround-api-255488063888.asia-south1.run.app/api/profile/init", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

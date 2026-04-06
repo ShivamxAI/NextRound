@@ -1,3 +1,4 @@
+import os
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 
@@ -5,13 +6,21 @@ def initialize_firebase():
     """Initializes the Firebase Admin SDK."""
     # Check if already initialized to prevent errors on server reload
     if not firebase_admin._apps:
-        # Point to the JSON file you downloaded
-        cred = credentials.Certificate("firebase-adminsdk.json")
         
-        # Initialize the app
-        firebase_admin.initialize_app(cred)
-        print("🔥 Firebase Admin initialized successfully!")
+        # 'K_SERVICE' is an environment variable that ONLY exists inside Google Cloud Run.
+        if os.environ.get("K_SERVICE"):
+            # We are in PRODUCTION! Use Google's magical built-in default credentials.
+            print("🔥 Initializing Firebase Admin in Production mode...")
+            firebase_admin.initialize_app()
+            
+        else:
+            # We are running LOCALLY on your computer. Use the JSON key file.
+            print("🔥 Initializing Firebase Admin in Local mode...")
+            cred = credentials.Certificate("firebase-adminsdk.json")
+            firebase_admin.initialize_app(cred)
 
-# We export db and auth so other files can import them easily
+# Initialize it
 initialize_firebase()
+
+# Export db and auth so other files can import them easily
 db = firestore.client()

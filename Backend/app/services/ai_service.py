@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+import re # <-- NEW IMPORT REQUIRED FOR BULLETPROOF PARSING
 from google import genai
 from dotenv import load_dotenv
 from app.core.firebase import db
@@ -10,7 +11,7 @@ load_dotenv()
 # NEW CLIENT INITIALIZATION
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# --- LOGGING HELPER MOVED TO THE TOP ---
+# --- LOGGING HELPER ---
 def log_ai_interaction(action: str, prompt: str, raw_response: str, latency_ms: float, error: str = None):
     """Silently saves exactly what Gemini was asked and what it answered."""
     try:
@@ -29,9 +30,6 @@ def log_ai_interaction(action: str, prompt: str, raw_response: str, latency_ms: 
 
 
 def extract_skills_from_resume(resume_text: str) -> list:
-    """
-    Sends resume text to Gemini using the new google-genai SDK.
-    """
     prompt = f"""
     You are an expert technical recruiter. Extract the candidate's core technical and professional skills from the text below.
     Return ONLY a flat JSON array of strings. Maximum 15 skills.
@@ -52,25 +50,18 @@ def extract_skills_from_resume(resume_text: str) -> list:
         latency = (end_time - start_time).total_seconds() * 1000
         
         text = response.text.strip()
-        
-        # Log it!
         log_ai_interaction(action="extract_skills", prompt=prompt, raw_response=text, latency_ms=latency)
         
-        # Clean up Gemini's habit of wrapping things in markdown
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
+        # BULLETPROOF REGEX PARSING FOR ARRAYS
+        match = re.search(r'\[.*\]', text, re.DOTALL)
+        if not match:
+            raise ValueError("Could not find a valid JSON array in response.")
             
-        # Parse the string into a Python list
-        result = json.loads(text.strip())
+        result = json.loads(match.group(0))
         
         if isinstance(result, list):
             return result
         elif isinstance(result, dict):
-            # If Gemini accidentally returns {"skills": ["A", "B"]}, extract the list
             for key, value in result.items():
                 if isinstance(value, list):
                     return value
@@ -79,17 +70,12 @@ def extract_skills_from_resume(resume_text: str) -> list:
             return []
             
     except Exception as e:
-        print(f"🚨 NEW SDK ERROR: {e}")
+        print(f"🚨 SKILL EXTRACTION ERROR: {e}")
         log_ai_interaction(action="extract_skills", prompt=prompt, raw_response="", latency_ms=0, error=str(e))
-        if 'response' in locals() and hasattr(response, 'text'):
-            print(f"RAW AI RESPONSE: {response.text}") 
         return []
 
 
 def generate_interview_questions(job_description: str, skills: list, interview_type: str, count: int, industry: str = "general") -> list:
-    """
-    Generates personalized interview questions based on the JD and candidate skills.
-    """
     skills_str = ", ".join(skills) if skills else "No specific skills provided."
     
     prompt = f"""
@@ -97,7 +83,7 @@ def generate_interview_questions(job_description: str, skills: list, interview_t
     
     CONTEXT:
     Candidate's Extracted Skills: {skills_str}
-    Job Job Description:
+    Job Description:
     {job_description}
     
     INSTRUCTIONS:
@@ -124,19 +110,14 @@ def generate_interview_questions(job_description: str, skills: list, interview_t
         latency = (end_time - start_time).total_seconds() * 1000
         
         text = response.text.strip()
-        
-        # Log it!
         log_ai_interaction(action="generate_questions", prompt=prompt, raw_response=text, latency_ms=latency)
         
-        # Clean up Gemini's habit of wrapping things in markdown
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
+        # BULLETPROOF REGEX PARSING FOR ARRAYS
+        match = re.search(r'\[.*\]', text, re.DOTALL)
+        if not match:
+            raise ValueError("Could not find a valid JSON array in response.")
             
-        return json.loads(text.strip())
+        return json.loads(match.group(0))
         
     except Exception as e:
         print(f"🚨 QUESTION GENERATION ERROR: {e}")
@@ -145,17 +126,12 @@ def generate_interview_questions(job_description: str, skills: list, interview_t
 
 
 def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
-    """
-    Takes the questions and user answers, and asks Gemini to grade the performance based on subscription plan.
-    """
-    # Format the Q&A for the prompt
     transcript = ""
     for idx, qa in enumerate(qa_list, 1):
         transcript += f"\n--- Question {idx} ---\n"
         transcript += f"Question: {qa.get('text')}\n"
         transcript += f"Candidate's Answer: {qa.get('user_answer', '(No answer provided)')}\n"
 
-    # Define the strictness and depth based on the plan!
     if user_plan == "free":
         grading_rules = """
         - Provide BASIC feedback.
@@ -171,7 +147,7 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
         - The 'strengths' array should contain 2-3 specific things they did well technically or behaviorally.
         - The 'improvements' array should contain 2-3 specific technical mistakes they made and explicitly state what the correct answer should be.
         """
-    else: # Premium
+    else: 
         grading_rules = """
         - Provide ADVANCED EXPERT feedback.
         - Give a rigorous final score and strict metrics.
@@ -205,7 +181,6 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
         "roadmap": ["Step 1...", "Step 2...", "Step 3..."]
     }}
     """
-    
     try:
         start_time = datetime.datetime.utcnow()
         response = client.models.generate_content(
@@ -216,18 +191,14 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
         latency = (end_time - start_time).total_seconds() * 1000
         
         text = response.text.strip()
-        
-        # Log it!
         log_ai_interaction(action="evaluate_interview", prompt=prompt, raw_response=text, latency_ms=latency)
         
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
+        # BULLETPROOF REGEX PARSING FOR OBJECTS
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if not match:
+            raise ValueError(f"Could not find a valid JSON object. Raw text: {text}")
             
-        return json.loads(text.strip())
+        return json.loads(match.group(0))
         
     except Exception as e:
         print(f"🚨 EVALUATION ERROR: {e}")
@@ -236,5 +207,6 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
             "overall_score": 0,
             "metrics": {"technical_accuracy": 0, "communication": 0, "confidence": 0, "fluency": 0},
             "strengths": ["Evaluation failed to generate."],
-            "improvements": ["Please try again later."]
+            "improvements": ["Please try again later."],
+            "roadmap": []
         }
