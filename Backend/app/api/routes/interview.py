@@ -9,7 +9,7 @@ import uuid
 
 router = APIRouter()
 
-# --- SCHEMAS ---
+# SCHEMAS 
 class InterviewGenerateRequest(BaseModel):
     job_description: str
     interview_type: str
@@ -21,13 +21,8 @@ class AnswerSubmitRequest(BaseModel):
     question_id: int
     answer: str
 
-# --- NEW: Schema for Admin Predefined Questions ---
-class QuestionSetRequest(BaseModel):
-    role: str
-    questions: list[str]
 
-# --- ENDPOINTS ---
-
+# ENDPOINTS 
 @router.post("/generate", status_code=201)
 async def start_new_interview(
     request: InterviewGenerateRequest, 
@@ -36,15 +31,15 @@ async def start_new_interview(
     """Takes the Job Description, asks Gemini for questions, and saves the session."""
     user_id = user["uid"]
     
-    # 1. Fetch user profile
+    # Fetch user profile
     user_doc = db.collection("users").document(user_id).get()
     if not user_doc.exists:
         raise HTTPException(status_code=404, detail="User profile not found")
     
     user_data = user_doc.to_dict()
-    user_plan = user_data.get("plan", "free").lower() # <-- Get their current plan
+    user_plan = user_data.get("plan", "free").lower() 
     
-    # --- BUSINESS LOGIC: Check Free Tier Limits (Max 3 per month) ---
+    # Check Free Tier Limits (Max 3 per month) 
     if user_plan == "free":
         now = datetime.datetime.utcnow()
         start_of_month = datetime.datetime(now.year, now.month, 1).isoformat()
@@ -58,12 +53,11 @@ async def start_new_interview(
         count = sum(1 for _ in recent_interviews)
         
         if count >= 3:
-            # Block them and tell the frontend they need to upgrade!
+            # Block them and tells the frontend they need to upgrade!
             raise HTTPException(
                 status_code=403, 
                 detail="FREE_LIMIT_REACHED"
             )
-    # -----------------------------------------------------------------
 
     skills = user_data.get("skills", [])
     
@@ -180,13 +174,13 @@ async def save_answer(
     return {"message": "Answer saved successfully"}
 
 
-# --- UPDATED EVALUATION ENDPOINT ---
+# EVALUATION ENDPOINT 
 @router.post("/{interview_id}/evaluate")
 async def evaluate_interview_session(interview_id: str, user: dict = Depends(get_current_user)):
     """Triggers the AI to grade the completed interview based on the user's plan."""
     user_id = user["uid"]
     
-    # 1. Fetch the interview document
+    # Fetch the interview document
     doc_ref = db.collection("interviews").document(interview_id)
     doc = doc_ref.get()
     
@@ -201,14 +195,14 @@ async def evaluate_interview_session(interview_id: str, user: dict = Depends(get
         
     questions = data.get("questions", [])
     
-    # 2. Fetch the user's plan from the database
+    # Fetch the user's plan from the database
     user_doc = db.collection("users").document(user_id).get()
     user_plan = user_doc.to_dict().get("plan", "free").lower() if user_doc.exists else "free"
     
-    # 3. Ask Gemini to grade the transcript, passing the plan as a rule!
+    # Ask Gemini to grade the transcript, passing the plan as a rule!
     feedback = evaluate_interview(questions, user_plan)
     
-    # 4. Update the database to mark it complete and save the feedback
+    # Update the database to mark it complete and save the feedback
     doc_ref.update({
         "status": "completed",
         "feedback": feedback,
@@ -216,45 +210,3 @@ async def evaluate_interview_session(interview_id: str, user: dict = Depends(get
     })
     
     return feedback
-
-
-# --- ADMIN ENDPOINTS ---
-
-@router.get("/admin/ai-logs")
-async def get_ai_logs(user: dict = Depends(get_current_user)):
-    """Fetches the 50 most recent AI interactions for the Admin Panel."""
-    # NOTE: In a real production app, you would verify user["uid"] belongs to an Admin here!
-    
-    logs = []
-    # Fetch the 50 most recent logs directly from Firebase
-    docs = db.collection("ai_logs").order_by("timestamp", direction="DESCENDING").limit(50).stream()
-    
-    for doc in docs:
-        log_data = doc.to_dict()
-        log_data["id"] = doc.id
-        logs.append(log_data)
-        
-    return {"logs": logs}
-
-
-@router.get("/admin/question-sets")
-async def get_question_sets(user: dict = Depends(get_current_user)):
-    """Fetches all predefined question sets for the Admin Panel."""
-    docs = db.collection("question_sets").stream()
-    sets = [{"id": doc.id, **doc.to_dict()} for doc in docs]
-    return {"question_sets": sets}
-
-
-@router.post("/admin/question-sets")
-async def save_question_set(request: QuestionSetRequest, user: dict = Depends(get_current_user)):
-    """Creates or updates a predefined question set."""
-    # Create a URL-safe ID from the role name (e.g., "React Developer" -> "react_developer")
-    doc_id = request.role.lower().strip().replace(" ", "_")
-    
-    data = {
-        "role": request.role,
-        "questions": request.questions
-    }
-    
-    db.collection("question_sets").document(doc_id).set(data)
-    return {"message": "Question set saved successfully", "id": doc_id}

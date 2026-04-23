@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, ArrowRight, Upload, Brain, MessageSquare, Shuffle, Clock, Hash, CheckCircle2, Loader2, Briefcase, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// --- IMPORT SECURE API HELPER ---
+// IMPORT SECURE API HELPER 
 import { fetchWithAuth } from "../lib/api";
 
 const interviewTypes = [
@@ -26,7 +26,7 @@ export default function InterviewSetup() {
   const [duration, setDuration] = useState("30");
   const [questions, setQuestions] = useState("10");
   
-  // --- NEW: Industry Focus State ---
+  // Industry Focus State 
   const [industry, setIndustry] = useState("general");
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -79,7 +79,7 @@ export default function InterviewSetup() {
           interview_type: type,
           duration_minutes: parseInt(duration),
           question_count: parseInt(questions),
-          industry: industry // <-- NEW: Send industry to the backend!
+          industry: industry // Sends industry to the backend!
         })
       });
 

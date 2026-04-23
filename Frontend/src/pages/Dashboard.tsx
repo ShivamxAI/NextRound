@@ -5,19 +5,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Target, Clock, Activity, ArrowRight, Loader2 } from "lucide-react";
 import { auth } from "../lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { fetchWithAuth } from "../lib/api"; // Bring in our secure API helper!
+import { fetchWithAuth } from "../lib/api"; 
 
 export default function Dashboard() {
-  // 1. Auth State
+  // Auth State
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // 2. Data State
+  // Data State
   const [history, setHistory] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // --- EFFECT 1: Wait for Firebase to find the user ---
+  // EFFECT 1: Wait for Firebase to find the user 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -26,7 +26,7 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
-  // --- EFFECT 2: Fetch history ONLY after user is loaded ---
+  // EFFECT 2: Fetch history ONLY after user is loaded 
   useEffect(() => {
     // If no user yet (or they are logged out), do not fetch!
     if (!user) return;
@@ -44,9 +44,9 @@ export default function Dashboard() {
     };
 
     fetchHistory();
-  }, [user]); // <--- This ensures it runs the moment the user state updates
+  }, [user]); // This ensures it runs the moment the user state updates
 
-  // --- CALCULATE STATS ---
+  // CALCULATE STATS 
   const completedInterviews = history.filter(i => i.status === "completed" && i.feedback);
   const totalInterviews = completedInterviews.length;
   
@@ -58,7 +58,7 @@ export default function Dashboard() {
     ? new Date(completedInterviews[0].created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
     : "—";
 
-  // --- SHOW LOADER IF FIREBASE OR DATA IS LOADING ---
+  // SHOW LOADER IF FIREBASE OR DATA IS LOADING 
   if (authLoading || (user && isLoading)) {
     return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }

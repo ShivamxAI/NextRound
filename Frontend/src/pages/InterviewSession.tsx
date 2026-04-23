@@ -6,9 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, ArrowRight, XCircle, Clock, MessageSquare, Loader2, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// --- API & FIREBASE IMPORTS ---
+// API & FIREBASE IMPORTS 
 import { auth } from "../lib/firebase";
-import { fetchWithAuth } from "../lib/api"; // <-- Import secure helper
+import { fetchWithAuth } from "../lib/api"; // Import secure helper
 
 export default function InterviewSession() {
   const navigate = useNavigate();
@@ -23,13 +23,13 @@ export default function InterviewSession() {
   const [isSaving, setIsSaving] = useState(false);
   const [timer, setTimer] = useState(180); // 3 min per question
   
-  // --- NEW: Track user plan ---
+  // Tracks user plan 
   const [userPlan, setUserPlan] = useState<string>("free");
 
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  // 1. Fetch Questions & User Plan
+  // Fetch Questions & User Plan
   useEffect(() => {
     const fetchSessionData = async () => {
       if (!interviewId) {
@@ -56,14 +56,14 @@ export default function InterviewSession() {
     fetchSessionData();
   }, [interviewId, navigate, toast]);
 
-  // 2. Timer Countdown Logic
+  // Timer Countdown Logic
   useEffect(() => {
     if (timer <= 0) return;
     const interval = setInterval(() => setTimer((t) => t - 1), 1000);
     return () => clearInterval(interval);
   }, [timer]);
 
-  // 3. Auto-Advance when Timer hits 0
+  // Auto-Advance when Timer hits 0
   useEffect(() => {
     if (timer === 0 && !isSaving) {
       toast({ title: "Time's Up!", description: "Moving to the next question automatically." });
@@ -72,7 +72,7 @@ export default function InterviewSession() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timer]);
 
-  // 4. Voice-to-Text Setup
+  // Voice-to-Text Setup
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {

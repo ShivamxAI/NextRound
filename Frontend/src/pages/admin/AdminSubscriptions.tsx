@@ -59,7 +59,7 @@ export default function AdminSubscriptions() {
     loadData();
   }, []);
 
-  // --- UPDATE SUBSCRIPTION LOGIC ---
+  // UPDATE SUBSCRIPTION LOGIC 
   const handleUpdateSubscription = async () => {
     if (!manageSub) return;
     setIsUpdatingPlan(true);
@@ -180,7 +180,7 @@ export default function AdminSubscriptions() {
                     </TableCell>
                     <TableCell className="px-6 py-4 text-right">
                       
-                      {/* --- ACTIONS DROPDOWN --- */}
+                      {/* ACTIONS DROPDOWN */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -208,7 +208,7 @@ export default function AdminSubscriptions() {
         </CardContent>
       </Card>
 
-      {/* --- MANAGE SUBSCRIPTION MODAL --- */}
+      {/* MANAGE SUBSCRIPTION MODAL */}
       <Dialog open={!!manageSub} onOpenChange={() => setManageSub(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

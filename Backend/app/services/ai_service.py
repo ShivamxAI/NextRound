@@ -1,7 +1,7 @@
 import os
 import json
 import datetime
-import re # <-- NEW IMPORT REQUIRED FOR BULLETPROOF PARSING
+import re 
 from google import genai
 from dotenv import load_dotenv
 from app.core.firebase import db
@@ -11,7 +11,7 @@ load_dotenv()
 # NEW CLIENT INITIALIZATION
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# --- LOGGING HELPER ---
+# LOGGING HELPER 
 def log_ai_interaction(action: str, prompt: str, raw_response: str, latency_ms: float, error: str = None):
     """Silently saves exactly what Gemini was asked and what it answered."""
     try:
@@ -132,27 +132,63 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
         transcript += f"Question: {qa.get('text')}\n"
         transcript += f"Candidate's Answer: {qa.get('user_answer', '(No answer provided)')}\n"
 
+    # Define dynamic grading rules AND dynamic JSON formats
     if user_plan == "free":
         grading_rules = """
-        - Provide BASIC feedback.
-        - Give a final score out of 100.
+        - Provide BASIC feedback. Give a final score out of 100.
         - The 'strengths' array should contain exactly 1 generic positive note.
         - The 'improvements' array MUST contain exactly this string as its first item: "🔒 Upgrade to Pro or Premium to unlock detailed question-by-question technical corrections and actionable improvement roadmaps."
-        - Do not provide specific technical corrections.
+        """
+        expected_json = """
+        {
+            "overall_score": 85,
+            "metrics": {"technical_accuracy": 80, "communication": 90, "confidence": 85, "fluency": 88},
+            "strengths": ["..."],
+            "improvements": ["..."],
+            "roadmap": [],
+            "question_feedback": []
+        }
         """
     elif user_plan == "pro":
         grading_rules = """
-        - Provide DETAILED feedback.
-        - Give a final score out of 100 and precise metrics.
-        - The 'strengths' array should contain 2-3 specific things they did well technically or behaviorally.
-        - The 'improvements' array should contain 2-3 specific technical mistakes they made and explicitly state what the correct answer should be.
+        - Provide DETAILED feedback. Give a final score out of 100 and precise metrics.
+        - The 'strengths' array should contain 2-3 specific things they did well.
+        - The 'improvements' array should contain 2-3 specific technical mistakes they made.
         """
-    else: 
+        expected_json = """
+        {
+            "overall_score": 85,
+            "metrics": {"technical_accuracy": 80, "communication": 90, "confidence": 85, "fluency": 88},
+            "strengths": ["..."],
+            "improvements": ["..."],
+            "roadmap": [],
+            "question_feedback": []
+        }
+        """
+    else: # PREMIUM (Subscription Tier)
         grading_rules = """
-        - Provide ADVANCED EXPERT feedback.
-        - Give a rigorous final score and strict metrics.
-        - The 'strengths' array should contain 3-4 deep analytical points about their communication style, confidence, and technical depth.
-        - The 'improvements' array MUST include a specific step-by-step 'Improvement Roadmap', specific coding concepts/patterns to study, and precise behavioral corrections.
+        - Provide ADVANCED EXPERT feedback. Give a rigorous final score and strict metrics.
+        - The 'strengths' array should contain 3-4 deep analytical points.
+        - The 'improvements' array MUST include a specific step-by-step 'Improvement Roadmap'.
+        - MUST include a 'question_feedback' array. For EVERY question asked, provide a detailed critique.
+        - Structure the 'ideal_answer' professionally using bullet points or numbered lists to show depth; DO NOT provide a single paragraph ideal answer.
+        """
+        expected_json = """
+        {
+            "overall_score": 85,
+            "metrics": {"technical_accuracy": 80, "communication": 90, "confidence": 85, "fluency": 88},
+            "strengths": ["..."],
+            "improvements": ["..."],
+            "roadmap": ["Step 1...", "Step 2..."],
+            "question_feedback": [
+                {
+                    "question": "The exact text of the question asked.",
+                    "user_answer": "The exact answer the candidate provided.",
+                    "critique": "What was missing, incorrect, or great about this answer.",
+                    "ideal_answer": "A comprehensive, perfectly structured ideal answer."
+                }
+            ]
+        }
         """
 
     prompt = f"""
@@ -165,22 +201,12 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
     INSTRUCTIONS:
     - Grade the candidate on a scale of 0 to 100 for each metric.
     {grading_rules}
-    - Return ONLY a raw JSON object. Do not include markdown or the word 'json'.
+    - Return ONLY a raw JSON object. Do not include markdown.
     
     REQUIRED FORMAT:
-    {{
-        "overall_score": 85,
-        "metrics": {{
-            "technical_accuracy": 80,
-            "communication": 90,
-            "confidence": 85,
-            "fluency": 88
-        }},
-        "strengths": ["...", "..."],
-        "improvements": ["...", "..."],
-        "roadmap": ["Step 1...", "Step 2...", "Step 3..."]
-    }}
+    {expected_json}
     """
+    
     try:
         start_time = datetime.datetime.utcnow()
         response = client.models.generate_content(
@@ -193,10 +219,10 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
         text = response.text.strip()
         log_ai_interaction(action="evaluate_interview", prompt=prompt, raw_response=text, latency_ms=latency)
         
-        # BULLETPROOF REGEX PARSING FOR OBJECTS
+        # BULLETPROOF REGEX PARSING
         match = re.search(r'\{.*\}', text, re.DOTALL)
         if not match:
-            raise ValueError(f"Could not find a valid JSON object. Raw text: {text}")
+            raise ValueError(f"Could not find a valid JSON object.")
             
         return json.loads(match.group(0))
         
@@ -208,5 +234,6 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
             "metrics": {"technical_accuracy": 0, "communication": 0, "confidence": 0, "fluency": 0},
             "strengths": ["Evaluation failed to generate."],
             "improvements": ["Please try again later."],
-            "roadmap": []
+            "roadmap": [],
+            "question_feedback": []
         }

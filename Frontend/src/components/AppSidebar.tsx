@@ -15,7 +15,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 
-// --- FIREBASE & API IMPORTS ---
+// FIREBASE & API IMPORTS 
 import { auth } from "../lib/firebase"; 
 import { signOut, onAuthStateChanged } from "firebase/auth"; 
 import { fetchWithAuth } from "../lib/api"; 
@@ -31,11 +31,11 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // 1. States for Admin and Subscription Plan
+  // States for Admin and Subscription Plan
   const [isAdmin, setIsAdmin] = useState(false);
   const [userPlan, setUserPlan] = useState<string>("free");
 
-  // 2. Ask the backend for the user's profile when the sidebar loads
+  // Ask the backend for the user's profile when the sidebar loads
   useEffect(() => {
     const checkUserProfile = async () => {
       try {
@@ -72,7 +72,7 @@ export function AppSidebar() {
     return () => unsubscribe();
   }, []);
 
-  // --- LOGOUT LOGIC ---
+  // LOGOUT LOGIC 
   const handleSignOut = async () => {
     try {
       await signOut(auth); 
@@ -90,7 +90,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      {/* --- LOGO AND CLICKABLE PRO BADGE AREA --- */}
+      {/* LOGO AND CLICKABLE PRO BADGE AREA */}
       <div className="px-6 py-5 flex items-center gap-2">
         <h1 className="text-xl font-bold font-display text-sidebar-primary-foreground tracking-tight">
           Next<span className="text-sidebar-primary">Round</span>

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 
-// --- API & AUTH IMPORTS ---
+// API & AUTH IMPORTS 
 import { auth } from "../lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth"; // <-- Import auth listener
 import { fetchWithAuth } from "../lib/api";
@@ -68,7 +68,8 @@ const plans = [
       "Advanced communication analysis",
       "AI-generated improvement roadmap",
       "Industry-specific mock interviews",
-      "Priority support",
+      "Question-wise feedback",
+      "A lot more coming soon...",
     ],
     cta: "Go Premium",
     variant: "outline" as const,
@@ -115,7 +116,7 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // --- NEW: Listen to Firebase Auth to update Navbar ---
+  // Listen to Firebase Auth to update Navbar 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -124,26 +125,26 @@ export default function Pricing() {
   }, []);
 
   const handleAction = async (planId: string, rawPrice: number) => {
-    // 1. If not logged in, force them to sign up first!
+    // If not logged in, force them to sign up first!
     if (!user) {
       toast({ title: "Account Required", description: "Please sign in to choose a plan." });
       navigate("/signup");
       return;
     }
 
-    // 2. If free plan, just go to dashboard
+    // If free plan, just go to dashboard
     if (rawPrice === 0) {
       navigate("/dashboard");
       return;
     }
 
-    // 3. Initiate Razorpay Checkout for Paid Plans
+    // Initiate Razorpay Checkout for Paid Plans
     setLoadingPlan(planId);
     try {
       const res = await loadRazorpayScript();
       if (!res) throw new Error("Razorpay SDK failed to load. Are you online?");
 
-      // Ask Python backend to create an Order
+      // Asks Python backend to create an Order
       const orderData = await fetchWithAuth("/payments/create-order", {
         method: "POST",
         body: JSON.stringify({ plan: planId, amount: rawPrice })
@@ -200,7 +201,7 @@ export default function Pricing() {
             Next<span className="text-primary">Round</span>
           </Link>
           <div className="flex items-center gap-3">
-            {/* --- UPDATED NAVBAR LOGIC --- */}
+            {/* UPDATED NAVBAR LOGIC */}
             {!user ? (
               <>
                 <Button variant="ghost" asChild>

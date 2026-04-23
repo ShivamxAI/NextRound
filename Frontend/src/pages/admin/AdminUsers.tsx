@@ -11,7 +11,7 @@ import { Search, Users, Filter, Loader2, MoreHorizontal, Trash2, User, CreditCar
 import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-// 1. Define the shape of our User data from the backend
+// Define the shape of our User data from the backend
 interface UserData {
   id: string;
   name: string;
@@ -19,14 +19,14 @@ interface UserData {
   plan: string;
   status: string;
   created_at: string;
-  interviews?: number; // <-- Added this!
+  interviews?: number; 
 }
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   
-  // 2. Add state for our backend data
+  // Add state for our backend data
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,7 +40,7 @@ export default function AdminUsers() {
   
   const { toast } = useToast();
 
-  // 3. Fetch users when the component loads
+  // Fetch users when the component loads
   useEffect(() => {
     const loadUsers = async () => {
       try {
@@ -57,7 +57,7 @@ export default function AdminUsers() {
     loadUsers();
   }, []);
 
-  // --- DELETE LOGIC ---
+  // DELETE LOGIC 
   const handleDeleteUser = async (userId: string, userName: string) => {
     const confirmed = window.confirm(`⚠️ WARNING: Are you absolutely sure you want to delete ${userName}?\n\nThis will permanently erase their account, profile, and ALL of their past interview data. This action CANNOT be undone.`);
     if (!confirmed) return;
@@ -74,7 +74,7 @@ export default function AdminUsers() {
     }
   };
 
-  // --- UPDATE SUBSCRIPTION LOGIC ---
+  // UPDATE SUBSCRIPTION LOGIC 
   const handleUpdateSubscription = async () => {
     if (!manageUser) return;
     setIsUpdatingPlan(true);
@@ -96,7 +96,7 @@ export default function AdminUsers() {
     }
   };
 
-  // 4. Real-time Filtering Logic
+  // Real-time Filtering Logic
   const filteredUsers = users.filter((user) => {
     const matchesSearch = 
       (user.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
@@ -197,7 +197,7 @@ export default function AdminUsers() {
                       </Badge>
                     </TableCell>
                     
-                    {/* --- REAL INTERVIEW COUNT --- */}
+                    {/* REAL INTERVIEW COUNT */}
                     <TableCell className="text-foreground font-medium pl-6">
                       {user.interviews || 0}
                     </TableCell>
@@ -207,7 +207,7 @@ export default function AdminUsers() {
                     </TableCell>
                     <TableCell className="text-right">
                       
-                      {/* --- ACTIONS DROPDOWN --- */}
+                      {/* ACTIONS DROPDOWN */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isDeleting === user.id}>
@@ -249,7 +249,7 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
-      {/* --- POPUP 1: VIEW PROFILE MODAL --- */}
+      {/* POPUP 1: VIEW PROFILE MODAL */}
       <Dialog open={!!viewUser} onOpenChange={() => setViewUser(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -290,7 +290,7 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* --- POPUP 2: MANAGE SUBSCRIPTION MODAL --- */}
+      {/* POPUP 2: MANAGE SUBSCRIPTION MODAL */}
       <Dialog open={!!manageUser} onOpenChange={() => setManageUser(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

@@ -5,7 +5,7 @@ import {
   Users, 
   Activity, 
   MessageSquare, 
-  IndianRupee, // <-- Using Rupee Icon!
+  IndianRupee, 
   CreditCard, 
   TrendingUp, 
   Loader2,

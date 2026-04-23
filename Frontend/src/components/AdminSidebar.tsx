@@ -10,8 +10,8 @@ import {
   Shield,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { Link, useNavigate } from "react-router-dom"; // <-- Added Link & useNavigate
-import { useToast } from "@/hooks/use-toast"; // <-- Added for notifications
+import { Link, useNavigate } from "react-router-dom"; 
+import { useToast } from "@/hooks/use-toast"; 
 import {
   Sidebar,
   SidebarContent,
@@ -24,7 +24,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 
-// --- FIREBASE IMPORTS ---
+// FIREBASE IMPORTS 
 import { auth } from "../lib/firebase"; 
 import { signOut } from "firebase/auth";
 
@@ -42,7 +42,7 @@ export function AdminSidebar() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // --- LOGOUT LOGIC ---
+  // LOGOUT LOGIC 
   const handleSignOut = async () => {
     try {
       await signOut(auth); 
@@ -62,7 +62,7 @@ export function AdminSidebar() {
     <Sidebar className="border-r-0">
       <div className="px-6 py-5">
         
-        {/* --- THE ESCAPE HATCH --- */}
+        {/* THE ESCAPE HATCH */}
         <Link to="/dashboard" className="block transition-opacity hover:opacity-80 cursor-pointer">
           <h1 className="text-xl font-bold font-display text-sidebar-primary-foreground tracking-tight">
             Next<span className="text-sidebar-primary">Round</span>
@@ -104,7 +104,7 @@ export function AdminSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        {/* --- WIRED UP SIGN OUT BUTTON --- */}
+        {/* WIRED UP SIGN OUT BUTTON */}
         <button 
           onClick={handleSignOut}
           className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full text-sm"

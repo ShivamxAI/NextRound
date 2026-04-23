@@ -38,7 +38,7 @@ export default function AdminLogs() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Fetch the logs on load
+  // Fetch the logs on load
   useEffect(() => {
     const loadLogs = async () => {
       try {
@@ -53,7 +53,7 @@ export default function AdminLogs() {
     loadLogs();
   }, []);
 
-  // 2. Real-time Filtering Logic
+  // Real-time Filtering Logic
   const filteredLogs = logs.filter((log) => {
     const matchesSearch = 
       log.action.toLowerCase().includes(search.toLowerCase()) ||

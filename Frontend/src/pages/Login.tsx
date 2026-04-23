@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
-// --- FIREBASE IMPORTS ---
+// FIREBASE IMPORTS 
 import { auth } from "../lib/firebase"; 
 import { 
   signInWithEmailAndPassword, 
@@ -23,7 +23,7 @@ export default function Login() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // --- EMAIL & PASSWORD LOGIN ---
+  // EMAIL & PASSWORD LOGIN 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -40,7 +40,7 @@ export default function Login() {
       navigate("/dashboard");
     } catch (error: any) {
       console.error(error);
-      // Give a friendly error for bad passwords
+      // Giving a friendly error for bad passwords
       toast({ 
         title: "Login Failed", 
         description: "Invalid email or password. Please try again.", 
@@ -51,7 +51,7 @@ export default function Login() {
     }
   };
 
-  // --- GOOGLE LOGIN ---
+  // GOOGLE LOGIN 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
@@ -60,8 +60,7 @@ export default function Login() {
       const token = await getIdToken(result.user);
 
       // We call the backend here just in case this is a brand new user 
-      // logging in with Google for the first time. (Our backend code will 
-      // safely ignore it if they already exist!)
+      // logging in with Google for the first time. (The backend code will safely ignore it if they already exist!)
       await fetch("https://nextround-api-255488063888.asia-south1.run.app/api/profile/init", {
         method: "POST",
         headers: {
@@ -104,7 +103,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="ENTER YOUR EMAIL"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
@@ -124,7 +123,7 @@ export default function Login() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="ENTER YOUR PASSWORD"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
@@ -136,7 +135,7 @@ export default function Login() {
                 {isLoading ? "Signing In..." : "Sign In"}
               </Button>
 
-              {/* --- GOOGLE BUTTON --- */}
+              {/* GOOGLE BUTTON */}
               <div className="relative w-full my-2">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" />

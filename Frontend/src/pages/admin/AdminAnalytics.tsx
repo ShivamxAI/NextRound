@@ -6,7 +6,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 
-// --- TYPESCRIPT INTERFACES ---
+// TYPESCRIPT INTERFACES 
 interface AnalyticsData {
   metrics: {
     daily_active: number;

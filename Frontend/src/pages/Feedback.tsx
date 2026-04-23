@@ -6,7 +6,11 @@ import { Progress } from "@/components/ui/progress";
 import { Download, RotateCcw, Target, MessageSquare, Shield, Zap, TrendingUp, AlertTriangle, Loader2, CheckCircle, Lock, Map, Sparkles, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// --- FIREBASE & API IMPORTS ---
+// IMPORT FOR MARKDOWN RENDERING 
+import ReactMarkdown from 'react-markdown';
+// ------------------------------------------
+
+// FIREBASE & API IMPORTS 
 import { auth } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { fetchWithAuth } from "../lib/api";
@@ -123,7 +127,9 @@ export default function Feedback() {
           <h1 className="text-2xl font-bold font-display text-foreground">Interview Feedback</h1>
           <p className="text-sm text-muted-foreground mt-1">Review your performance and improve</p>
         </div>
-        <div className="flex gap-2">
+        
+        {/* ADDED print:hidden to hide these buttons when printing */}
+        <div className="flex gap-2 print:hidden">
           <Button 
             variant="outline" 
             onClick={handleDownload}
@@ -209,7 +215,7 @@ export default function Feedback() {
         </Card>
       </div>
 
-      {/* ---  AI ROADMAP UPSELL CARD --- */}
+      {/* AI ROADMAP UPSELL CARD */}
       <Card className="relative overflow-hidden border-indigo-100 shadow-sm">
         <CardHeader className="bg-indigo-50/50 pb-4 border-b border-indigo-50">
           <CardTitle className="text-lg font-display flex items-center gap-2 text-indigo-900">
@@ -221,7 +227,6 @@ export default function Feedback() {
           </CardDescription>
         </CardHeader>
         
-        {/* --- THE FIX: Added dynamic min-h-[320px] so the modal fits perfectly --- */}
         <CardContent className={`p-6 relative ${showPremiumOverlay ? "min-h-[320px]" : ""}`}>
           
           {/* The Data (Blurred if not premium) */}
@@ -259,6 +264,73 @@ export default function Feedback() {
           )}
         </CardContent>
       </Card>
+
+      {/* PREMIUM: QUESTION-BY-QUESTION BREAKDOWN */}
+      {feedback?.question_feedback && feedback.question_feedback.length > 0 && (
+        <div className="mt-8 space-y-6">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl font-bold font-display">Question-by-Question Analysis</h3>
+            <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wider">Premium Feature</span>
+          </div>
+
+          <div className="space-y-6">
+            {feedback.question_feedback.map((item: any, index: number) => (
+              <div key={index} className="bg-white border rounded-xl shadow-sm overflow-hidden">
+                {/* Question Header */}
+                <div className="bg-slate-50 p-4 border-b">
+                  <p className="font-semibold text-slate-800">
+                    <span className="text-primary mr-2">Q{index + 1}:</span> 
+                    {item.question}
+                  </p>
+                </div>
+
+                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* User's Answer */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-wide">
+                      <span>Your Answer</span>
+                    </div>
+                    {/* Kept your gray italic style here */}
+                    <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-700 h-full max-h-[400px] overflow-y-auto print:max-h-none print:overflow-visible border border-slate-100 italic whitespace-pre-wrap leading-relaxed">
+                      <ReactMarkdown>
+                        {item.user_answer ? `"${item.user_answer}"` : "*(No answer provided)*"}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+
+                  {/* Ideal Answer */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 uppercase tracking-wide">
+                      <span>Ideal Answer</span>
+                    </div>
+                    {/* Restored Emerald styling */}
+                    <div className="bg-emerald-50/50 p-4 rounded-lg text-sm border border-emerald-100 h-full max-h-[400px] overflow-y-auto print:max-h-none print:overflow-visible">
+                        <div className="prose prose-sm prose-slate max-w-none text-slate-700 leading-relaxed marker:text-emerald-500">
+                            <ReactMarkdown>
+                                {item.ideal_answer}
+                            </ReactMarkdown>
+                        </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Critique */}
+                <div className="px-4 pb-4">
+                  {/* Restored Indigo styling */}
+                  <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg max-h-[250px] overflow-y-auto print:max-h-none print:overflow-visible">
+                    <p className="text-sm font-semibold text-indigo-900 mb-2">AI Critique:</p>
+                    <div className="text-sm text-indigo-800/80 leading-relaxed whitespace-pre-wrap break-words">
+                      <ReactMarkdown>
+                        {item.critique}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   );

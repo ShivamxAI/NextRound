@@ -8,12 +8,16 @@ from firebase_admin import auth
 
 router = APIRouter()
 
-# --- SCHEMAS ---
+# SCHEMAS 
 class PlanUpdateRequest(BaseModel):
     plan: str
 
+class QuestionSetRequest(BaseModel):
+    role: str
+    questions: list[str]
 
-# --- 1. ADMIN DASHBOARD STATS ---
+
+# ADMIN DASHBOARD STATS 
 @router.get("/stats")
 def get_dashboard_stats(admin: dict = Depends(get_admin_user)):
     """Fetches high-level metrics for the Admin Dashboard."""
@@ -24,7 +28,7 @@ def get_dashboard_stats(admin: dict = Depends(get_admin_user)):
     active_subs = 0
     monthly_revenue = 0
     
-    # SETTING YOUR EXACT INR PRICING HERE
+    # SETTING EXACT INR PRICING FOR ACCURATE DASHBOARD REVENUE CALCULATION
     PLAN_PRICES = {"pro": 99, "premium": 299, "free": 0}
 
     for doc in users_ref:
@@ -47,7 +51,7 @@ def get_dashboard_stats(admin: dict = Depends(get_admin_user)):
         total_interviews += 1
         inv_data = doc.to_dict()
         
-        # Build recent activity feed
+        # Build recent activity feed with accurate role and user info
         recent_activity.append({
             "id": doc.id,
             "title": f"Interview: {inv_data.get('job_title', 'General')}",
@@ -85,7 +89,7 @@ def get_dashboard_stats(admin: dict = Depends(get_admin_user)):
     }
 
 
-# --- USER MANAGEMENT ENDPOINTS ---
+# USER MANAGEMENT ENDPOINTS 
 @router.get("/users")
 def get_all_users(admin: dict = Depends(get_admin_user)):
     """Fetches the list of users and dynamically counts their interviews."""
@@ -131,15 +135,15 @@ def update_user_plan(target_user_id: str, request: PlanUpdateRequest, admin: dic
 def delete_user(target_user_id: str, admin: dict = Depends(get_admin_user)):
     """Deletes a user, their profile, and all their interview history."""
     try:
-        # 1. Delete all interviews associated with this user
+        # Delete all interviews associated with this user
         interviews_ref = db.collection("interviews").where("user_id", "==", target_user_id).stream()
         for doc in interviews_ref:
             doc.reference.delete()
 
-        # 2. Delete the user's Firestore profile document
+        # Delete the user's Firestore profile document
         db.collection("users").document(target_user_id).delete()
 
-        # 3. Delete the user from Firebase Authentication
+        # Delete the user from Firebase Authentication
         try:
             auth.delete_user(target_user_id)
         except Exception as auth_err:
@@ -151,7 +155,7 @@ def delete_user(target_user_id: str, admin: dict = Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- OTHER ADMIN ENDPOINTS ---
+# SETTINGS & ANALYTICS ENDPOINTS
 @router.get("/settings")
 def get_settings(admin: dict = Depends(get_admin_user)):
     """Fetches global platform settings (Difficulty, Categories, etc.)"""
@@ -251,7 +255,6 @@ def get_analytics(admin: dict = Depends(get_admin_user)):
     }
 
 
-# --- OVERHAULED INTERVIEWS ROUTE ---
 @router.get("/interviews")
 def get_all_interviews(admin: dict = Depends(get_admin_user)):
     """Fetches all interviews and accurately extracts type and score."""
@@ -260,24 +263,23 @@ def get_all_interviews(admin: dict = Depends(get_admin_user)):
     interviews_list = []
     total_score = 0
     scored_count = 0
-    industry_count = 0 # <-- Upgraded to Industry Count
+    industry_count = 0 
     roles = []
     
     for doc in interviews_ref:
         data = doc.to_dict()
         
-        # 1. Extract Role
+        # Extract Role
         role = data.get("job_title", "Unknown Role")
         roles.append(role)
 
-        # 2. Extract Interview Type (Look for 'type', 'interview_type', or 'industry')
+        # Extract Interview Type
         int_type = data.get("type", data.get("interview_type", data.get("industry_focus", "General")))
         
-        # If the type is anything other than "general", count it as an Industry Focus use!
         if isinstance(int_type, str) and int_type.lower() not in ["general", "standard", ""]:
             industry_count += 1
             
-        # 3. Extract Score
+        # Extract Score
         score = "—"
         feedback = data.get("feedback")
         evaluation = data.get("evaluation")
@@ -308,7 +310,6 @@ def get_all_interviews(admin: dict = Depends(get_admin_user)):
     
     avg_score = round(total_score / scored_count) if scored_count > 0 else 0
     
-    # Filter out 'Unknown Role' from the popular calculation if possible
     valid_roles = [r for r in roles if r != "Unknown Role"]
     most_common_role = Counter(valid_roles).most_common(1)[0][0] if valid_roles else "N/A"
         
@@ -325,7 +326,6 @@ def get_all_interviews(admin: dict = Depends(get_admin_user)):
     }
 
 
-# --- UPDATED SUBSCRIPTIONS ROUTE ---
 @router.get("/subscriptions")
 def get_all_subscriptions(admin: dict = Depends(get_admin_user)):
     """Fetches subscription metrics and billing details from users."""
@@ -355,7 +355,7 @@ def get_all_subscriptions(admin: dict = Depends(get_admin_user)):
             stats["monthly_revenue"] += PLAN_PRICES[plan]
             amount = f"₹{PLAN_PRICES[plan]}.00"
             
-            # --- REAL EXPIRING SOON LOGIC ---
+            # EXPIRING SOON LOGIC 
             if created_at:
                 try:
                     join_date = datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00")).replace(tzinfo=None)
@@ -390,26 +390,86 @@ def get_all_subscriptions(admin: dict = Depends(get_admin_user)):
 
 @router.get("/logs")
 def get_system_logs(admin: dict = Depends(get_admin_user)):
-    """Fetches system and user activity logs."""
-    now = datetime.datetime.utcnow()
+    """Fetches real system activity by aggregating recent users and interviews."""
+    real_logs = []
     
-    mock_logs = [
-        {
-            "id": "log_1",
-            "timestamp": (now - datetime.timedelta(minutes=2)).strftime("%Y-%m-%d %H:%M:%S"),
-            "type": "auth",
-            "user": admin.get("email", "admin@nextround.com"),
-            "action": "Admin Login",
-            "details": "Successful authentication via Firebase token"
-        },
-        {
-            "id": "log_2",
-            "timestamp": (now - datetime.timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
-            "type": "user",
-            "user": "system",
-            "action": "New User Registration",
-            "details": "Profile initialized in Firestore database"
-        }
-    ]
+    try:
+        # 1. Fetch the 25 most recent user registrations
+        users_ref = db.collection("users").order_by("created_at", direction="DESCENDING").limit(25).stream()
+        for doc in users_ref:
+            data = doc.to_dict()
+            if "created_at" in data:
+                real_logs.append({
+                    "id": f"user_{doc.id}",
+                    "timestamp": data["created_at"],
+                    "type": "user",
+                    "user": data.get("email", data.get("name", "Unknown")),
+                    "action": "New Registration",
+                    "details": f"User joined on the {data.get('plan', 'free').upper()} plan."
+                })
+
+        # 2. Fetch the 25 most recent interview sessions
+        interviews_ref = db.collection("interviews").order_by("created_at", direction="DESCENDING").limit(25).stream()
+        for doc in interviews_ref:
+            data = doc.to_dict()
+            if "created_at" in data:
+                status = data.get("status", "started")
+                score = data.get("evaluation", {}).get("overall_score", "Pending")
+                
+                real_logs.append({
+                    "id": f"inv_{doc.id}",
+                    "timestamp": data["created_at"],
+                    "type": "system",
+                    "user": data.get("user_name", "Unknown Candidate"),
+                    "action": f"Interview {status.capitalize()}",
+                    "details": f"Role: {data.get('job_title', 'General')} | Score: {score}"
+                })
+
+        # 3. Sort all combined events by date (newest exactly at the top)
+        real_logs.sort(key=lambda x: x["timestamp"], reverse=True)
+
+        # Return the top 50 most recent events across the whole system
+        return {"logs": real_logs[:50]}
+
+    except Exception as e:
+        print(f"🚨 Failed to fetch system logs: {e}")
+        return {"logs": []}
+
+
+# AI-log and Question Set Management
+
+@router.get("/ai-logs")
+async def get_ai_logs(admin: dict = Depends(get_admin_user)):
+    """Fetches the 50 most recent AI interactions for the Admin Panel."""
+    logs = []
+    # Fetch the 50 most recent logs directly from Firebase
+    docs = db.collection("ai_logs").order_by("timestamp", direction="DESCENDING").limit(50).stream()
     
-    return {"logs": mock_logs}
+    for doc in docs:
+        log_data = doc.to_dict()
+        log_data["id"] = doc.id
+        logs.append(log_data)
+        
+    return {"logs": logs}
+
+
+@router.get("/question-sets")
+async def get_question_sets(admin: dict = Depends(get_admin_user)):
+    """Fetches all predefined question sets for the Admin Panel."""
+    docs = db.collection("question_sets").stream()
+    sets = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+    return {"question_sets": sets}
+
+
+@router.post("/question-sets")
+async def save_question_set(request: QuestionSetRequest, admin: dict = Depends(get_admin_user)):
+    """Creates or updates a predefined question set."""
+    # Create a URL-safe ID from the role name (e.g., "React Developer" -> "react_developer")
+    doc_id = request.role.lower().strip().replace(" ", "_")
+    
+    data = {
+        "role": request.role,
+        "questions": request.questions
+    }
+    db.collection("question_sets").document(doc_id).set(data)
+    return {"message": "Question set saved successfully", "id": doc_id}

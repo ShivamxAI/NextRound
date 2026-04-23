@@ -9,12 +9,11 @@ def initialize_firebase():
         
         # 'K_SERVICE' is an environment variable that ONLY exists inside Google Cloud Run.
         if os.environ.get("K_SERVICE"):
-            # We are in PRODUCTION! Use Google's magical built-in default credentials.
             print("🔥 Initializing Firebase Admin in Production mode...")
             firebase_admin.initialize_app()
             
         else:
-            # We are running LOCALLY on your computer. Use the JSON key file.
+            # If running LOCALLY on the computer. Use the JSON key file.
             print("🔥 Initializing Firebase Admin in Local mode...")
             cred = credentials.Certificate("firebase-adminsdk.json")
             firebase_admin.initialize_app(cred)

@@ -27,7 +27,7 @@ async def initialize_user_profile(
         "email": profile_data.email,
         "target_role": "",
         "resume_url": "",
-        "skills": [], # Added skills array to the initial structure
+        "skills": [], 
         "status": "active",
         "plan": "free",
         "created_at": datetime.datetime.utcnow().isoformat()
@@ -73,16 +73,16 @@ async def upload_resume(
 ):
     """Accepts a PDF resume, extracts text, and uses Gemini to find skills."""
     
-    # 1. Validate file type
+    # Validate file type
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Currently, only PDF files are supported.")
     
     try:
-        # 2. Read the PDF file into memory
+        # Read the PDF file into memory
         contents = await file.read()
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(contents))
         
-        # 3. Extract text from all pages
+        # Extract text from all pages
         resume_text = ""
         for page in pdf_reader.pages:
             extracted = page.extract_text()
@@ -92,10 +92,10 @@ async def upload_resume(
         if not resume_text.strip():
             raise HTTPException(status_code=400, detail="Could not extract text from this PDF.")
 
-        # 4. Pass the text to Gemini to get the skills
+        # Pass the text to Gemini to get the skills
         skills = extract_skills_from_resume(resume_text)
         
-        # 5. Save the skills to the user's Firestore profile
+        # Save the skills to the user's Firestore profile
         user_id = user["uid"]
         db.collection("users").document(user_id).update({
             "skills": skills,

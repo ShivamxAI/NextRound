@@ -18,7 +18,7 @@ import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminContent() {
-  // --- SETTINGS STATE ---
+  // SETTINGS STATE 
   const [difficulty, setDifficulty] = useState("medium");
   const [categories, setCategories] = useState<string[]>([]);
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -30,7 +30,7 @@ export default function AdminContent() {
   const [newCategory, setNewCategory] = useState("");
   const [savingCategories, setSavingCategories] = useState(false);
 
-  // --- QUESTION SETS STATE ---
+  // QUESTION SETS STATE 
   const [questionSets, setQuestionSets] = useState<any[]>([]);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [newRoleName, setNewRoleName] = useState<string>(""); // <-- ADDED MISSING STATE
@@ -39,13 +39,13 @@ export default function AdminContent() {
   const [jsonSuccess, setJsonSuccess] = useState<string | null>(null);
   const [isSavingSet, setIsSavingSet] = useState(false);
 
-  // --- AI LOGS STATE ---
+  // AI LOGS STATE 
   const [aiLogs, setAiLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedText, setSelectedText] = useState<{ title: string; content: string } | null>(null);
 
-  // --- 1. LOAD DATA ---
+  // LOAD DATA 
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -77,7 +77,7 @@ export default function AdminContent() {
     loadData();
   }, []);
 
-  // --- 2. SAVE DIFFICULTY ---
+  // SAVE DIFFICULTY 
   const handleSaveDifficulty = async () => {
     setSavingDifficulty(true);
     try {
@@ -93,7 +93,7 @@ export default function AdminContent() {
     }
   };
 
-  // --- 3. CATEGORY FUNCTIONS ---
+  // CATEGORY FUNCTIONS 
   const addCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
       setCategories([...categories, newCategory.trim()]);
@@ -121,7 +121,7 @@ export default function AdminContent() {
     }
   };
 
-  // --- 4. QUESTION SETS FUNCTIONS ---
+  // QUESTION SETS FUNCTIONS 
   const handleRoleSelect = (roleId: string) => {
     setSelectedRole(roleId);
     setJsonError(null);
@@ -200,7 +200,7 @@ export default function AdminContent() {
     }
   };
 
-  // --- 5. LOGS FILTERING ---
+  // LOGS FILTERING 
   const filteredLogs = aiLogs.filter(log => 
     log.action.toLowerCase().includes(search.toLowerCase()) || 
     log.status.toLowerCase().includes(search.toLowerCase())
@@ -318,7 +318,7 @@ export default function AdminContent() {
           </CardContent>
         </Card>
 
-        {/* --- PREDEFINED QUESTION SETS (JSON EDITOR) --- */}
+        {/* PREDEFINED QUESTION SETS (JSON EDITOR) */}
         <Card className="lg:col-span-2 border-indigo-100 shadow-sm">
           <CardHeader className="bg-indigo-50/50 pb-4 border-b border-indigo-50">
             <CardTitle className="font-display text-lg flex items-center gap-2 text-indigo-900">
@@ -346,7 +346,7 @@ export default function AdminContent() {
               </Select>
             </div>
 
-            {/* --- THE MISSING INPUT BOX IS HERE --- */}
+            {/* THE MISSING INPUT BOX IS HERE */}
             {selectedRole === "new" && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 w-full md:w-[300px]">
                 <Label>New Role Title</Label>
@@ -397,7 +397,7 @@ export default function AdminContent() {
         </Card>
       </div>
 
-      {/* --- AI RESPONSE LOGS TABLE --- */}
+      {/* AI RESPONSE LOGS TABLE */}
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
           <div>
@@ -455,19 +455,20 @@ export default function AdminContent() {
         </CardContent>
       </Card>
 
-      {/* --- AI LOG MODAL --- */}
+      {/* AI LOG MODAL*/}
       {selectedText && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl">
-            <CardHeader className="border-b flex flex-row items-center justify-between py-4 bg-muted/30">
+          <Card className="w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <CardHeader className="border-b flex flex-row items-center justify-between py-4 bg-muted/30 shrink-0">
               <CardTitle className="text-lg font-display capitalize">{selectedText.title.replace("_", " ")}</CardTitle>
               <Button variant="ghost" size="icon" onClick={() => setSelectedText(null)}><X className="h-5 w-5" /></Button>
             </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-hidden">
-              <div className="h-full overflow-y-auto p-6 bg-zinc-950 text-emerald-400 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+            <CardContent className="p-0 flex-1 overflow-y-auto bg-zinc-950">
+              <div className="p-6 text-emerald-400 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words">
                 {selectedText.content || "No content recorded."}
               </div>
             </CardContent>
+            
           </Card>
         </div>
       )}

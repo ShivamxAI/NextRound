@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Upload, FileText, X, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// --- FIREBASE IMPORT ---
+// FIREBASE IMPORT 
 import { auth } from "../lib/firebase"; 
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -16,7 +16,6 @@ export default function Profile() {
   const [targetRole, setTargetRole] = useState("");
   const [file, setFile] = useState<File | null>(null);
   
-  // New States for Backend Integration
   const [skills, setSkills] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -25,7 +24,7 @@ export default function Profile() {
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // --- 1. LOAD PROFILE DATA ON MOUNT ---
+  //LOAD PROFILE DATA ON MOUNT 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -55,7 +54,7 @@ export default function Profile() {
     return () => unsubscribe();
   }, []);
 
-  // --- 2. SAVE PROFILE CHANGES ---
+  // SAVE PROFILE CHANGES 
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -79,7 +78,7 @@ export default function Profile() {
     }
   };
 
-  // --- 3. UPLOAD RESUME & EXTRACT SKILLS ---
+  // UPLOAD RESUME & EXTRACT SKILLS 
   const uploadResume = async (selectedFile: File) => {
     setIsUploading(true);
     setFile(selectedFile);
@@ -95,7 +94,6 @@ export default function Profile() {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`
-          // Note: Do NOT set Content-Type for FormData. The browser handles the boundaries automatically.
         },
         body: formData
       });
@@ -106,13 +104,13 @@ export default function Profile() {
       }
 
       const data = await response.json();
-      setSkills(data.skills); // Update the UI with AI skills instantly!
+      setSkills(data.skills); // Updates the UI with AI skills instantly!
       toast({ title: "Skills extracted successfully!" });
 
     } catch (error: any) {
       console.error(error);
       toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
-      setFile(null); // Reset file if it failed
+      setFile(null); // Resets the file if it failed
     } finally {
       setIsUploading(false);
     }

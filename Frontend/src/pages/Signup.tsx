@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
-// --- FIREBASE IMPORTS ---
-import { auth } from "../lib/firebase"; // Adjust this path if your firebase file is elsewhere
+// FIREBASE IMPORTS 
+import { auth } from "../lib/firebase"; 
 import { 
   createUserWithEmailAndPassword, 
   getIdToken, 
@@ -24,7 +24,7 @@ export default function Signup() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // --- EMAIL & PASSWORD SIGNUP ---
+  // EMAIL & PASSWORD SIGNUP 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password) {
@@ -38,11 +38,11 @@ export default function Signup() {
 
     setIsLoading(true);
     try {
-      // 1. Create user in Firebase Auth
+      // Creates user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const token = await getIdToken(userCredential.user);
 
-      // 2. Save user to Python Backend & Firestore
+      // Saves user to Python Backend & Firestore
       const response = await fetch("https://nextround-api-255488063888.asia-south1.run.app/api/profile/init", {
         method: "POST",
         headers: {
@@ -65,7 +65,7 @@ export default function Signup() {
     }
   };
 
-  // --- GOOGLE SIGN UP ---
+  // GOOGLE SIGN UP 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {

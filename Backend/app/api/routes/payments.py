@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import razorpay
 import os
 from app.core.firebase import db 
-from app.core.security import get_current_user # Adjust to your auth dependency
+from app.core.security import get_current_user 
 
 router = APIRouter()
 
@@ -12,7 +12,7 @@ razorpay_client = razorpay.Client(
     auth=(os.getenv("RAZORPAY_KEY_ID"), os.getenv("RAZORPAY_KEY_SECRET"))
 )
 
-# --- SCHEMAS ---
+# SCHEMAS 
 class CreateOrderRequest(BaseModel):
     plan: str
     amount: int
@@ -23,7 +23,7 @@ class VerifyPaymentRequest(BaseModel):
     razorpay_signature: str
     plan: str
 
-# --- ENDPOINTS ---
+# ENDPOINTS 
 
 @router.post("/create-order")
 async def create_order(request: CreateOrderRequest, user: dict = Depends(get_current_user)):
@@ -62,7 +62,7 @@ async def verify_payment(request: VerifyPaymentRequest, user: dict = Depends(get
     """Verifies the cryptograph signature from Razorpay and upgrades the user."""
     
     try:
-        # 1. Verify the signature to ensure the payment is legitimate
+        # Verify the signature to ensure the payment is legitimate
         params_dict = {
             'razorpay_order_id': request.razorpay_order_id,
             'razorpay_payment_id': request.razorpay_payment_id,
@@ -72,7 +72,7 @@ async def verify_payment(request: VerifyPaymentRequest, user: dict = Depends(get
         # If this fails, it throws a SignatureVerificationError
         razorpay_client.utility.verify_payment_signature(params_dict)
         
-        # 2. Signature is valid! Upgrade the user in Firestore!
+        # Signature is valid! Upgrade the user in Firestore!
         user_id = user["uid"]
         user_ref = db.collection("users").document(user_id)
         

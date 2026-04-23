@@ -5,19 +5,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { History, Plus, Calendar, Clock, Target, ChevronRight, Loader2 } from "lucide-react";
 import { auth } from "../lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { fetchWithAuth } from "../lib/api"; // <-- Import the secure API helper
+import { fetchWithAuth } from "../lib/api"; // Imports the secure API helper
 
 export default function InterviewHistory() {
-  // 1. Auth State
+  // Auth State
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // 2. Data State
+  // Data State
   const [history, setHistory] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // --- EFFECT 1: Wait for Firebase ---
+  // EFFECT 1: Wait for Firebase 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -26,7 +26,7 @@ export default function InterviewHistory() {
     return () => unsubscribe();
   }, []);
 
-  // --- EFFECT 2: Fetch history ONLY after user is loaded ---
+  // EFFECT 2: Fetch history ONLY after user is loaded 
   useEffect(() => {
     // If no user yet (or they are logged out), do not fetch!
     if (!user) return;
@@ -46,7 +46,7 @@ export default function InterviewHistory() {
     fetchHistory();
   }, [user]); // Runs exactly when the user state updates
 
-  // --- SHOW LOADER IF FIREBASE OR DATA IS LOADING ---
+  // SHOW LOADER IF FIREBASE OR DATA IS LOADING 
   if (authLoading || (user && isLoading)) {
     return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
@@ -94,9 +94,7 @@ export default function InterviewHistory() {
                   : `/interview/session?id=${interview.id}`
               )}
             >
-              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                {/* ... Keep the rest of your beautiful Card Content EXACTLY as it was! */}
-                
+              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">                
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-foreground capitalize text-lg">
