@@ -2,6 +2,8 @@
 
 NextRound is an intelligent, full-stack platform designed to simulate realistic technical interviews and provide actionable, senior-level feedback. Built as a showcase of Generative AI integration for my 4th-Semester On-the-Job Training (OJT) in the GenAI track, the platform leverages Google's **Gemini 2.5 Flash** to dynamically evaluate candidates, generate tailored improvement roadmaps, and assess technical accuracy.
 
+## Checkout my app at :  https://nextround-4c74d.web.app/
+
 ## ✨ Key Features
 
 ### 🧠 Intelligent Interview Generation
@@ -66,5 +68,5 @@ NextRound provides graded feedback based on the user's subscription tier:
 
 ### 1. Clone the repository
 ```bash
-git clone [https://github.com/yourusername/nextround.git](https://github.com/yourusername/nextround.git)
+git clone [https://github.com/yourusername/nextround.git]
 cd nextround
