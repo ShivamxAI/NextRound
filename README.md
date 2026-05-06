@@ -1,6 +1,6 @@
 # 🚀 NextRound: AI-Powered Technical Interviewer
 
-NextRound is an intelligent, full-stack platform designed to simulate realistic technical interviews and provide actionable, senior-level feedback. Built as a showcase of Generative AI integration for my 4th-Semester On-the-Job Training (OJT) in the GenAI track, the platform leverages Google's **Gemini 2.5 Flash** to dynamically evaluate candidates, generate tailored improvement roadmaps, and assess technical accuracy.
+NextRound is an intelligent, full-stack platform designed to simulate realistic technical & behavioral interviews and provide actionable, senior-level feedback. Built as a showcase of Generative AI integration, the platform leverages Google's **Gemini 2.5 Flash** to dynamically evaluate candidates, generate tailored improvement roadmaps, and assess technical accuracy.
 
 ## Checkout my app at :  https://nextround-4c74d.web.app/
 
