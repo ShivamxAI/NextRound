@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom"; // <-- Added Link
+import { useNavigate, useSearchParams, Link } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // API & FIREBASE IMPORTS 
 import { auth } from "../lib/firebase";
-import { fetchWithAuth } from "../lib/api"; // Import secure helper
+import { fetchWithAuth } from "../lib/api"; 
 
 export default function InterviewSession() {
   const navigate = useNavigate();
@@ -21,8 +21,11 @@ export default function InterviewSession() {
   const [answer, setAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [timer, setTimer] = useState(180); // 3 min per question
   
+  // DYNAMIC TIME TRACKING STATE 
+  const [timer, setTimer] = useState(180); 
+  const [timePerQuestion, setTimePerQuestion] = useState(180); // To remember what to reset to!
+
   // Tracks user plan 
   const [userPlan, setUserPlan] = useState<string>("free");
 
@@ -40,6 +43,16 @@ export default function InterviewSession() {
         // Fetch the interview questions using our secure helper
         const interviewData = await fetchWithAuth(`/interview/${interviewId}`);
         setQuestions(interviewData.questions || []);
+
+        // CALCULATE DYNAMIC TIME 
+        const totalQuestions = interviewData.questions?.length || 1;
+        // Default to 15 mins if undefined
+        const totalDurationMinutes = interviewData.duration_minutes || 15; 
+        
+        const calculatedSecondsPerQuestion = Math.floor((totalDurationMinutes * 60) / totalQuestions);
+        
+        setTimePerQuestion(calculatedSecondsPerQuestion);
+        setTimer(calculatedSecondsPerQuestion);
 
         // Fetch the user's profile to check their subscription plan
         const profileData = await fetchWithAuth("/profile/");
@@ -69,7 +82,6 @@ export default function InterviewSession() {
       toast({ title: "Time's Up!", description: "Moving to the next question automatically." });
       handleNext(false); 
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timer]);
 
   // Voice-to-Text Setup
@@ -143,7 +155,7 @@ export default function InterviewSession() {
         // Move to next question and reset states
         setCurrentIndex((prev) => prev + 1);
         setAnswer("");
-        setTimer(180); // Reset timer to 3 mins
+        setTimer(timePerQuestion); 
       }
     } catch (error) {
       console.error(error);

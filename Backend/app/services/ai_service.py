@@ -171,6 +171,7 @@ def evaluate_interview(qa_list: list, user_plan: str = "free") -> dict:
         - The 'strengths' array should contain 3-4 deep analytical points.
         - The 'improvements' array MUST include a specific step-by-step 'Improvement Roadmap'.
         - MUST include a 'question_feedback' array. For EVERY question asked, provide a detailed critique.
+        - CRITICAL: You MUST generate a complete, highly-detailed 'ideal_answer' for EVERY question, even if the candidate's answer is blank, missing, or says "No answer provided".
         - Structure the 'ideal_answer' professionally using bullet points or numbered lists to show depth; DO NOT provide a single paragraph ideal answer.
         """
         expected_json = """
