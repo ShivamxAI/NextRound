@@ -2,7 +2,7 @@
 
 NextRound is an intelligent, full-stack platform designed to simulate realistic technical & behavioral interviews and provide actionable, senior-level feedback. Built as a showcase of Generative AI integration, the platform leverages Google's **Gemini 2.5 Flash** to dynamically evaluate candidates, generate tailored improvement roadmaps, and assess technical accuracy.
 
-## Checkout my app at :  https://nextround-4c74d.web.app/
+## Checkout my app at :  [https://nextround-4c74d.web.app/](https://nextroundweb.xyz/)
 
 ## ✨ Key Features
 
